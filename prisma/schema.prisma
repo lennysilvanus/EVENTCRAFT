@@ -1,0 +1,233 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  password         String
+  name             String
+  phone            String?
+  avatar           String?
+  role             String    @default("USER")       // USER | ADMIN | SECURITY_ADMIN
+  status           String    @default("ACTIVE")     // ACTIVE | SUSPENDED | BANNED
+  plan             String    @default("FREE")       // FREE | PRO | BUSINESS
+  planExpiresAt    DateTime?
+  lastLoginAt      DateTime?
+  lastLoginIp      String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  passwordResetToken  String?   @unique
+  passwordResetExpiry DateTime?
+
+  emailVerified           Boolean   @default(false)
+  emailVerificationToken  String?   @unique
+  emailVerificationExpiry DateTime?
+
+  events           Event[]
+  eventMemberships EventMember[]
+  payoutMethods    HostPayoutMethod[]
+}
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  email     String
+  ip        String
+  success   Boolean
+  userId    String?
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([ip])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  action      String
+  actorId     String
+  actorEmail  String
+  targetId    String?
+  targetType  String?
+  targetLabel String?
+  metadata    String?
+  ip          String?
+  createdAt   DateTime @default(now())
+
+  @@index([actorId])
+  @@index([createdAt])
+}
+
+model BlockedToken {
+  id        String   @id @default(cuid())
+  jti       String   @unique
+  userId    String
+  blockedAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([jti])
+  @@index([expiresAt])
+}
+
+model Event {
+  id            String    @id @default(cuid())
+  title         String
+  description   String
+  date          DateTime
+  endDate       DateTime?
+  location      String
+  address       String?
+  coverImage    String?
+  coverColor    String?                             // hex accent for invite page
+  status        String    @default("DRAFT")
+  category      String    @default("OTHER")
+  maxGuests     Int?
+  ticketPrice   Float?                              // null = free event
+  ticketCurrency String   @default("USD")
+  rsvpDeadline  DateTime?
+  inviteText    String?
+  inviteToken   String    @unique @default(cuid())
+  dressCode     String?
+  notes         String?
+  isPublic      Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  hostId        String
+  host          User      @relation(fields: [hostId], references: [id], onDelete: Cascade)
+
+  guests        Guest[]
+  inviteLinks   InviteLink[]
+  payments      Payment[]
+  teamMembers   EventMember[]
+  tables        Table[]
+  tiers         TicketTier[]
+}
+
+model Guest {
+  id          String    @id @default(cuid())
+  name        String
+  email       String?
+  phone       String?
+  status      String    @default("PENDING")
+  checkedIn   Boolean   @default(false)
+  checkedInAt DateTime?
+  qrToken     String    @unique @default(cuid())
+  plusOne     Boolean   @default(false)
+  dietaryReqs String?
+  message     String?
+  notes       String?                               // host private notes
+  tags        String?                               // comma-separated: VIP,Speaker
+  tableId     String?
+  seatNumber  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tierId      String?
+  eventId     String
+  event       Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tier        TicketTier? @relation(fields: [tierId], references: [id])
+  payment     Payment?
+  table       Table?     @relation(fields: [tableId], references: [id])
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  amount      Float
+  currency    String   @default("TZS")
+  status      String   @default("PENDING")          // PENDING | COMPLETED | REFUNDED
+  provider    String   @default("snippe")
+  snippeId    String?  @unique
+  platformFee Float?                                // amount kept by EventCraft
+  payoutId    String?                               // Snippe disbursement_id to host
+  payoutStatus String? @default("PENDING")         // PENDING | SENT | FAILED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  guestId     String   @unique
+  guest       Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+model HostPayoutMethod {
+  id          String   @id @default(cuid())
+  type        String                                // mobile_money | bank_transfer
+  network     String?                              // mpesa | airtel | tigo | halotel | mixx
+  phone       String?
+  bankName    String?
+  bankCode    String?
+  accountNumber String?
+  accountName String?
+  isDefault   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model EventMember {
+  id        String   @id @default(cuid())
+  role      String   @default("VIEWER")             // VIEWER | CHECKIN | MANAGER | CO_HOST
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId])
+}
+
+model Table {
+  id       String  @id @default(cuid())
+  name     String
+  capacity Int     @default(8)
+  x        Float   @default(0)
+  y        Float   @default(0)
+  shape    String  @default("ROUND")                // ROUND | RECTANGULAR
+
+  eventId  String
+  event    Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  guests   Guest[]
+}
+
+model TicketTier {
+  id          String   @id @default(cuid())
+  name        String                                   // "Regular", "VIP", "VVIP"
+  description String?                                  // "Open bar + buffet"
+  price       Float
+  capacity    Int?                                     // null = unlimited
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  guests      Guest[]
+}
+
+model ProcessedWebhookEvent {
+  id            String   @id @default(cuid())
+  transactionId String   @unique
+  processedAt   DateTime @default(now())
+}
+
+model InviteLink {
+  id         String    @id @default(cuid())
+  token      String    @unique @default(cuid())
+  label      String?
+  usageCount Int       @default(0)
+  maxUses    Int?
+  expiresAt  DateTime?
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+
+  eventId    String
+  event      Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
