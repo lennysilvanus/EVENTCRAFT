@@ -13,7 +13,9 @@ import {
   Shield,
   Globe,
   Star,
+  Search,
 } from "lucide-react";
+import { Card3D } from "@/components/ui/Card";
 
 const features = [
   {
@@ -89,6 +91,9 @@ export default function LandingPage() {
             </span>
           </div>
           <div className="flex items-center gap-3">
+            <Link href="/explore" className="hidden sm:flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors px-3 py-2">
+              <Search size={14} /> Explore Events
+            </Link>
             <Link href="/login" className="text-sm text-slate-400 hover:text-white transition-colors px-3 py-2">
               Sign in
             </Link>
@@ -106,7 +111,7 @@ export default function LandingPage() {
       <section className="relative pt-32 pb-24 px-4 overflow-hidden">
         <div className="absolute top-20 left-1/4 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute top-40 right-1/4 w-80 h-80 bg-purple-600/8 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-px bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-150 h-px bg-linear-to-r from-transparent via-indigo-500/30 to-transparent" />
 
         <div className="max-w-5xl mx-auto text-center relative">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-semibold tracking-widest uppercase mb-8">
@@ -133,10 +138,10 @@ export default function LandingPage() {
               <ArrowRight size={18} />
             </Link>
             <Link
-              href="/login"
+              href="/explore"
               className="inline-flex items-center justify-center gap-2 bg-transparent border border-border hover:border-indigo-500/40 text-slate-300 hover:text-white font-semibold px-8 py-3.5 rounded-xl transition-all duration-150 text-base"
             >
-              Sign in
+              <Search size={18} /> Explore Events
             </Link>
           </div>
 
@@ -168,7 +173,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <p className="text-xs font-semibold text-indigo-400 uppercase tracking-widest mb-3">Everything you need</p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+            <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight mb-4">
               Built for modern event hosts
             </h2>
             <p className="text-slate-400 max-w-xl mx-auto">
@@ -176,18 +181,17 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((f) => (
-              <div
-                key={f.title}
-                className="bg-[#141e33] border border-border rounded-xl p-6 hover:border-indigo-500/20 transition-all duration-200 hover:-translate-y-1"
-              >
-                <div className={`inline-flex p-2.5 rounded-xl border mb-4 ${f.bg} ${f.color}`}>
-                  {f.icon}
+              <Card3D key={f.title} intensity="normal">
+                <div className="bg-card border border-border rounded-xl p-6">
+                  <div className={`inline-flex p-2.5 rounded-xl border mb-4 ${f.bg} ${f.color}`}>
+                    {f.icon}
+                  </div>
+                  <h3 className="text-base font-bold text-white mb-2 tracking-tight">{f.title}</h3>
+                  <p className="text-sm text-slate-400 leading-relaxed">{f.desc}</p>
                 </div>
-                <h3 className="text-base font-semibold text-white mb-2">{f.title}</h3>
-                <p className="text-sm text-slate-400 leading-relaxed">{f.desc}</p>
-              </div>
+              </Card3D>
             ))}
           </div>
         </div>
@@ -198,14 +202,14 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <p className="text-xs font-semibold text-emerald-400 uppercase tracking-widest mb-3">How it works</p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">From idea to check-in in minutes</h2>
+            <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight mb-4">From idea to check-in in minutes</h2>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {steps.map((step, i) => (
               <div key={step.num} className="relative">
                 {i < steps.length - 1 && (
-                  <div className="hidden lg:block absolute top-6 left-full w-full h-px bg-gradient-to-r from-indigo-500/30 to-transparent z-0" />
+                  <div className="hidden lg:block absolute top-6 left-full w-full h-px bg-linear-to-r from-indigo-500/30 to-transparent z-0" />
                 )}
                 <div className="relative z-10">
                   <div className="w-12 h-12 rounded-xl bg-indigo-600/15 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-sm mb-4">
@@ -225,15 +229,16 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <p className="text-xs font-semibold text-amber-400 uppercase tracking-widest mb-3">Pricing</p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Simple, transparent pricing</h2>
+            <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight mb-4">Simple, transparent pricing</h2>
             <p className="text-slate-400 max-w-xl mx-auto">
               A <span className="text-amber-300 font-medium">4% platform fee</span> applies only to paid ticket sales — nothing on free events. No monthly surprises.
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-3 gap-8">
             {/* Free */}
-            <div className="bg-[#141e33] border border-border rounded-2xl p-7 flex flex-col">
+            <Card3D rounded="2xl" intensity="normal">
+            <div className="bg-card border border-border rounded-2xl p-7 flex flex-col">
               <div className="mb-6">
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Starter</p>
                 <div className="flex items-end gap-1 mb-1">
@@ -243,11 +248,11 @@ export default function LandingPage() {
               </div>
               <ul className="flex flex-col gap-3 mb-8 flex-1">
                 {[
-                  "Up to 5 events",
-                  "Up to 100 guests per event",
+                  "3 events total",
+                  "50 guests per event",
                   "QR code check-in",
                   "WhatsApp sharing",
-                  "Basic RSVP tracking",
+                  "Digital tickets",
                   "4% fee on paid tickets",
                 ].map(f => (
                   <li key={f} className="flex items-start gap-2.5 text-sm text-slate-300">
@@ -260,8 +265,10 @@ export default function LandingPage() {
                 Get started free
               </Link>
             </div>
+            </Card3D>
 
             {/* Pro — highlighted */}
+            <Card3D rounded="2xl" intensity="strong">
             <div className="bg-indigo-600 rounded-2xl p-7 flex flex-col relative shadow-2xl shadow-indigo-900/40 ring-1 ring-indigo-400/30">
               <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                 <span className="inline-flex items-center gap-1 bg-amber-400 text-amber-900 text-xs font-bold px-3 py-1 rounded-full">
@@ -271,21 +278,21 @@ export default function LandingPage() {
               <div className="mb-6">
                 <p className="text-xs font-semibold text-indigo-200 uppercase tracking-wider mb-2">Pro</p>
                 <div className="flex items-end gap-1 mb-1">
-                  <span className="text-4xl font-black text-white">TZS 25k</span>
+                  <span className="text-4xl font-black text-white">TZS 45k</span>
                   <span className="text-indigo-200 text-sm mb-1">/mo</span>
                 </div>
-                <p className="text-sm text-indigo-200">Billed monthly. Cancel anytime.</p>
+                <p className="text-sm text-indigo-200">Or TZS 400k/year — save TZS 140k.</p>
               </div>
               <ul className="flex flex-col gap-3 mb-8 flex-1">
                 {[
                   "Unlimited events",
-                  "Unlimited guests",
+                  "500 guests per event",
                   "AI invitation writing",
-                  "Advanced analytics & reports",
+                  "Analytics & reports",
+                  "Team collaboration (5 members)",
                   "Bulk guest notifications",
                   "Custom invite links",
-                  "Team collaboration",
-                  "4% fee on paid tickets",
+                  "3% fee on paid tickets",
                 ].map(f => (
                   <li key={f} className="flex items-start gap-2.5 text-sm text-white">
                     <CheckCircle2 size={15} className="text-indigo-200 mt-0.5 shrink-0" />
@@ -294,28 +301,31 @@ export default function LandingPage() {
                 ))}
               </ul>
               <Link href="/register" className="block text-center bg-white hover:bg-indigo-50 text-indigo-700 font-semibold py-3 px-6 rounded-xl transition-colors text-sm">
-                Start Pro free trial
+                Get started
               </Link>
             </div>
+            </Card3D>
 
             {/* Business */}
-            <div className="bg-[#141e33] border border-border rounded-2xl p-7 flex flex-col">
+            <Card3D rounded="2xl" intensity="normal">
+            <div className="bg-card border-2 border-amber-500/30 rounded-2xl p-7 flex flex-col">
               <div className="mb-6">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Business</p>
+                <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">Business</p>
                 <div className="flex items-end gap-1 mb-1">
-                  <span className="text-4xl font-black text-white">TZS 75k</span>
+                  <span className="text-4xl font-black text-white">TZS 250k</span>
                   <span className="text-slate-400 text-sm mb-1">/mo</span>
                 </div>
-                <p className="text-sm text-slate-500">For agencies and large-scale events.</p>
+                <p className="text-sm text-slate-500">Or TZS 2.25M/year — save TZS 750k.</p>
               </div>
               <ul className="flex flex-col gap-3 mb-8 flex-1">
                 {[
                   "Everything in Pro",
+                  "Unlimited guests",
+                  "20 team members",
                   "White-label branding",
-                  "Dedicated account manager",
-                  "Priority support",
-                  "Custom integrations",
-                  "Reduced 2% fee on paid tickets",
+                  "Seating chart builder",
+                  "Dedicated support",
+                  "2% fee on paid tickets",
                 ].map(f => (
                   <li key={f} className="flex items-start gap-2.5 text-sm text-slate-300">
                     <CheckCircle2 size={15} className="text-emerald-500 mt-0.5 shrink-0" />
@@ -324,13 +334,15 @@ export default function LandingPage() {
                 ))}
               </ul>
               <Link href="/register" className="block text-center bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-6 rounded-xl transition-colors text-sm">
-                Contact us
+                Get started
               </Link>
             </div>
+            </Card3D>
           </div>
 
           <p className="text-center text-xs text-slate-600 mt-8">
-            All prices in Tanzanian Shillings (TZS). USD equivalent: ~$10/mo Pro, ~$30/mo Business.
+            All prices in Tanzanian Shillings (TZS). USD equivalent: ~$18/mo Pro, ~$100/mo Business.
+            Annual billing saves up to 26%.
           </p>
         </div>
       </section>
@@ -338,13 +350,14 @@ export default function LandingPage() {
       {/* CTA */}
       <section className="py-24 px-4">
         <div className="max-w-3xl mx-auto text-center">
-          <div className="bg-[#141e33] border border-indigo-500/20 rounded-2xl p-12 relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/5 via-transparent to-purple-600/5 pointer-events-none" />
+          <Card3D rounded="2xl" intensity="subtle" className="rounded-2xl">
+          <div className="bg-card border border-indigo-500/20 rounded-2xl p-12 relative overflow-hidden">
+            <div className="absolute inset-0 bg-linear-to-br from-indigo-600/5 via-transparent to-purple-600/5 pointer-events-none" />
             <div className="relative">
               <div className="inline-flex p-3 rounded-xl bg-indigo-600/15 border border-indigo-500/20 text-indigo-400 mb-6">
                 <Calendar size={28} />
               </div>
-              <h2 className="text-3xl font-bold text-white mb-4">Ready to craft your next event?</h2>
+              <h2 className="text-3xl font-black text-white tracking-tight mb-4">Ready to craft your next event?</h2>
               <p className="text-slate-400 mb-8 max-w-lg mx-auto">
                 Join hundreds of event hosts who use EventCraft to create memorable experiences.
               </p>
@@ -357,6 +370,7 @@ export default function LandingPage() {
               </Link>
             </div>
           </div>
+          </Card3D>
         </div>
       </section>
 
@@ -371,6 +385,7 @@ export default function LandingPage() {
           </div>
           <div className="flex items-center gap-6 text-xs text-slate-500">
             <span>© 2026 EventCraft</span>
+            <Link href="/explore" className="hover:text-slate-400 transition-colors">Explore Events</Link>
             <Link href="/terms" className="hover:text-slate-400 transition-colors">Terms</Link>
             <Link href="/privacy" className="hover:text-slate-400 transition-colors">Privacy</Link>
             <span className="flex items-center gap-1">

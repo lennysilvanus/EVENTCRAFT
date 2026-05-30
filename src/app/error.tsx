@@ -20,7 +20,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
         </div>
 
         <div className="text-8xl font-black text-red-600/30 mb-2 leading-none">500</div>
-        <h1 className="text-2xl font-bold text-white mb-3">Something went wrong</h1>
+        <h1 className="text-2xl font-black text-white tracking-tight mb-3">Something went wrong</h1>
         <p className="text-slate-400 mb-8">
           An unexpected error occurred. Please try again or go back to the dashboard.
         </p>
