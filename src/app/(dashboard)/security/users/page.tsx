@@ -63,7 +63,7 @@ export default function SecurityUsersPage() {
             <Shield size={20} className="text-red-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">User Management</h1>
+            <h1 className="text-2xl font-black text-white tracking-tight">User Management</h1>
             <p className="text-slate-400 text-sm">Suspend, ban or restore user accounts</p>
           </div>
           <button onClick={load} className="ml-auto text-slate-400 hover:text-white transition-colors p-2">

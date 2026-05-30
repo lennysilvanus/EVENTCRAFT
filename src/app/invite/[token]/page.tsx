@@ -4,6 +4,7 @@ import { useEffect, useState, use, useCallback } from "react";
 import {
   Calendar, MapPin, Clock, Users, CheckCircle2, XCircle, Sparkles,
   MessageCircle, User, Mail, Phone, QrCode, Ticket, Smartphone, Loader2,
+  Download, PlayCircle, Images,
 } from "lucide-react";
 import AddToCalendar from "@/components/ui/AddToCalendar";
 import toast from "react-hot-toast";
@@ -24,6 +25,12 @@ interface EventTier {
   remaining: number | null;
 }
 
+interface EventMedia {
+  id: string;
+  url: string;
+  caption?: string | null;
+}
+
 interface EventPublic {
   id: string;
   title: string;
@@ -35,6 +42,9 @@ interface EventPublic {
   inviteText?: string;
   category: string;
   coverImage?: string | null;
+  posterImage?: string | null;
+  videoUrl?: string | null;
+  media?: EventMedia[];
   dressCode?: string;
   maxGuests?: number;
   ticketPrice?: number | null;
@@ -46,6 +56,32 @@ interface EventPublic {
 
 type Step = "view" | "rsvp" | "payment" | "waiting" | "done";
 
+function getEmbedUrl(url: string): string | null {
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes("youtube.com") || u.hostname.includes("youtu.be")) {
+      const id = u.hostname.includes("youtu.be") ? u.pathname.slice(1) : u.searchParams.get("v");
+      return id ? `https://www.youtube.com/embed/${id}?rel=0` : null;
+    }
+    if (u.hostname.includes("vimeo.com")) {
+      const id = u.pathname.split("/").filter(Boolean).pop();
+      return id ? `https://player.vimeo.com/video/${id}` : null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function isDirectVideo(url: string): boolean {
+  try {
+    const ext = new URL(url).pathname.split(".").pop()?.toLowerCase();
+    return ["mp4", "webm", "mov", "avi"].includes(ext ?? "");
+  } catch {
+    return false;
+  }
+}
+
 export default function InvitePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
   const [event, setEvent] = useState<EventPublic | null>(null);
@@ -55,6 +91,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
   const [rsvpStatus, setRsvpStatus] = useState<"CONFIRMED" | "DECLINED" | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [guestData, setGuestData] = useState({ name: "", email: "", phone: "", plusOne: false, dietaryReqs: "", message: "" });
+  const [guestConsentGiven, setGuestConsentGiven] = useState(false);
   const [selectedTierId, setSelectedTierId] = useState<string | null>(null);
   const [payerPhone, setPayerPhone] = useState("");
   const [payerNetwork, setPayerNetwork] = useState("mpesa");
@@ -112,6 +149,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
   const handleRSVPSubmit = async () => {
     if (!guestData.name.trim()) { toast.error("Please enter your name"); return; }
     if (!rsvpStatus) { toast.error("Please select your attendance"); return; }
+    if (!guestConsentGiven) { toast.error("Please accept the privacy notice to continue"); return; }
     if (rsvpStatus === "CONFIRMED" && hasTiers && !selectedTierId) { toast.error("Please select a ticket tier"); return; }
     if (rsvpStatus === "CONFIRMED" && isTierSoldOut) { toast.error("This ticket tier is sold out"); return; }
 
@@ -207,52 +245,81 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
           <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-4">
             <XCircle size={28} className="text-red-400" />
           </div>
-          <h1 className="text-xl font-bold text-white mb-2">Invitation not found</h1>
+          <h1 className="text-xl font-black text-white tracking-tight mb-2">Invitation not found</h1>
           <p className="text-slate-400 text-sm">{error || "This invitation link is invalid or has expired."}</p>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="absolute top-0 inset-x-0 h-64 bg-linear-to-b from-indigo-600/10 to-transparent pointer-events-none" />
+  const bgImage = event.coverImage || event.posterImage || null;
 
-      <div className="relative max-w-xl mx-auto px-4 py-12">
+  return (
+    <div className="min-h-screen relative">
+      {/* ── Full-page background ─────────────────────────────────────── */}
+      <div className="fixed inset-0 -z-10 overflow-hidden">
+        {bgImage ? (
+          <>
+            <img src={bgImage} alt="" className="w-full h-full object-cover scale-110" />
+            <div className="absolute inset-0 bg-black/75 backdrop-blur-2xl" />
+          </>
+        ) : (
+          <div className="w-full h-full bg-background" />
+        )}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(99,102,241,0.25),transparent)]" />
+      </div>
+
+      <div className="relative min-h-screen py-10 px-4">
         {/* Logo */}
         <div className="flex items-center justify-center gap-2 mb-8">
-          <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center">
+          <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-900/60">
             <Sparkles size={14} className="text-white" />
           </div>
-          <span className="font-bold text-white text-base">EventCraft</span>
+          <span className="font-bold text-white text-base tracking-tight">
+            Event<span className="text-indigo-400">Craft</span>
+          </span>
         </div>
 
-        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xl">
-          {/* Event hero */}
-          {event.coverImage && (
-            <div className="relative w-full h-48 overflow-hidden">
+        {/* ── Main card ────────────────────────────────────────────────── */}
+        <div className="max-w-lg mx-auto bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-[0_32px_80px_rgba(0,0,0,0.6)]">
+
+          {/* ── Hero ─────────────────────────────────────────────────────── */}
+          <div className="relative h-96 overflow-hidden">
+            {event.coverImage ? (
               <img src={event.coverImage} alt={event.title} className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-linear-to-b from-transparent via-transparent to-card" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.3),rgba(7,9,26,0.9))]">
+                <span className="text-8xl opacity-60">{getCategoryIcon(event.category)}</span>
+              </div>
+            )}
+            {/* Heavy bottom fade so title text is always readable */}
+            <div className="absolute inset-0 bg-linear-to-t from-black/95 via-black/40 to-transparent" />
+
+            {/* Category badge */}
+            <div className="absolute top-4 left-4">
+              <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-black/40 text-white backdrop-blur-sm border border-white/10">
+                {getCategoryIcon(event.category)} {event.category === "OTHER" ? "General" : event.category.charAt(0) + event.category.slice(1).toLowerCase()}
+              </span>
             </div>
-          )}
-          <div className={`relative bg-linear-to-br from-indigo-600/20 via-purple-600/10 to-transparent p-8 border-b border-border ${event.coverImage ? "pt-5" : ""}`}>
-            <div className="text-center">
-              {!event.coverImage && <div className="text-5xl mb-4">{getCategoryIcon(event.category)}</div>}
-              <p className="text-xs font-semibold text-indigo-400 uppercase tracking-widest mb-2">
+
+            {/* Title block overlaid on image */}
+            <div className="absolute bottom-0 left-0 right-0 p-6">
+              <p className="text-indigo-300 text-xs font-semibold uppercase tracking-[0.2em] mb-2">
                 {event.host.name} invites you to
               </p>
-              <h1 className="text-2xl font-bold text-white mb-4">{event.title}</h1>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center text-sm text-slate-400">
-                <span className="flex items-center justify-center gap-2">
-                  <Calendar size={14} className="text-indigo-400" />{formatDate(event.date)}
+              <h1 className="text-3xl font-black text-white leading-tight mb-4 drop-shadow-lg">
+                {event.title}
+              </h1>
+              {/* Date / time / location pills */}
+              <div className="flex flex-wrap gap-2">
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full bg-white/10 text-white/90 backdrop-blur-sm border border-white/10">
+                  <Calendar size={11} className="text-indigo-300" />{formatDate(event.date)}
                 </span>
-                <span className="hidden sm:block text-slate-600">•</span>
-                <span className="flex items-center justify-center gap-2">
-                  <Clock size={14} className="text-indigo-400" />{formatTime(event.date)}
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full bg-white/10 text-white/90 backdrop-blur-sm border border-white/10">
+                  <Clock size={11} className="text-indigo-300" />{formatTime(event.date)}
                 </span>
-                <span className="hidden sm:block text-slate-600">•</span>
-                <span className="flex items-center justify-center gap-2">
-                  <MapPin size={14} className="text-indigo-400" />{event.location}
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full bg-white/10 text-white/90 backdrop-blur-sm border border-white/10">
+                  <MapPin size={11} className="text-indigo-300" />{event.location}
                 </span>
               </div>
             </div>
@@ -260,31 +327,181 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
 
           {/* STEP: VIEW */}
           {step === "view" && (
-            <div className="p-6">
+            <div className="animate-fade-in">
+              {/* ── Invitation text ───────────────────────────────────────── */}
               {event.inviteText && (
-                <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap mb-6">{event.inviteText}</p>
+                <div className="relative overflow-hidden border-b border-white/8">
+                  {/* Background image layer — blurred, top-heavy overlay that fades to opaque at the bottom
+                      so the content below the section reads cleanly with no jarring edge */}
+                  {bgImage && (
+                    <>
+                      <img
+                        src={bgImage}
+                        alt=""
+                        aria-hidden
+                        className="absolute inset-0 w-full h-full object-cover scale-110 blur-sm"
+                      />
+                      {/* Top: let image breathe. Bottom: fade to card background so next section has no hard cut */}
+                      <div className="absolute inset-0 bg-linear-to-b from-black/50 via-black/70 to-black/95" />
+                      {/* Extra hard-black strip at very bottom to fully dissolve the image into the card body */}
+                      <div className="absolute bottom-0 left-0 right-0 h-16 bg-linear-to-t from-black to-transparent" />
+                    </>
+                  )}
+
+                  {/* No image fallback — subtle indigo gradient */}
+                  {!bgImage && (
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(79,70,229,0.15),rgba(7,9,26,0.5))]" />
+                  )}
+
+                  {/* Content sits above the background */}
+                  <div className="relative px-8 py-10">
+                    {/* Top ornament */}
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="flex-1 h-px bg-linear-to-r from-transparent via-indigo-400/60 to-transparent" />
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-1 h-1 rounded-full bg-indigo-400/80" />
+                        <Sparkles size={13} className="text-indigo-300" />
+                        <div className="w-1 h-1 rounded-full bg-indigo-400/80" />
+                      </div>
+                      <div className="flex-1 h-px bg-linear-to-r from-transparent via-indigo-400/60 to-transparent" />
+                    </div>
+
+                    {/* Large decorative quote mark */}
+                    <div className="text-7xl leading-none text-white/15 font-serif mb-1 select-none">&ldquo;</div>
+
+                    <p className="text-white/90 text-[15px] leading-[1.9] whitespace-pre-wrap font-light italic px-2 drop-shadow-md">
+                      {event.inviteText}
+                    </p>
+
+                    <div className="text-7xl leading-none text-white/15 font-serif text-right mt-1 select-none">&rdquo;</div>
+
+                    {/* Host signature */}
+                    <p className="text-center text-xs text-indigo-300/80 font-medium tracking-[0.15em] uppercase mt-5">
+                      — {event.host.name}
+                    </p>
+
+                    {/* Bottom ornament */}
+                    <div className="flex items-center gap-3 mt-6">
+                      <div className="flex-1 h-px bg-linear-to-r from-transparent via-indigo-400/50 to-transparent" />
+                      <div className="w-4 h-px bg-indigo-400/60" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-400/60" />
+                      <div className="w-4 h-px bg-indigo-400/60" />
+                      <div className="flex-1 h-px bg-linear-to-r from-transparent via-indigo-400/50 to-transparent" />
+                    </div>
+                  </div>
+                </div>
               )}
 
-              <div className="bg-slate-800/40 border border-border rounded-xl p-4 mb-6 flex flex-col gap-3 text-sm">
-                {event.address && (
-                  <div className="flex gap-3">
-                    <MapPin size={15} className="text-slate-500 mt-0.5 shrink-0" />
-                    <div><p className="text-slate-400">Address</p><p className="text-white">{event.address}</p></div>
+              <div className="p-6">
+              {/* ── Event details card ────────────────────────────────────── */}
+              {(event.address || event.endDate || event.dressCode) && (
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mb-6 flex flex-col gap-3 text-sm">
+                  {event.address && (
+                    <div className="flex gap-3 items-start">
+                      <div className="p-1.5 rounded-lg bg-indigo-500/15 border border-indigo-500/20 shrink-0 mt-0.5">
+                        <MapPin size={12} className="text-indigo-400" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-white/40 uppercase tracking-widest mb-0.5">Address</p>
+                        <p className="text-white/90">{event.address}</p>
+                      </div>
+                    </div>
+                  )}
+                  {event.endDate && (
+                    <div className="flex gap-3 items-start">
+                      <div className="p-1.5 rounded-lg bg-indigo-500/15 border border-indigo-500/20 shrink-0 mt-0.5">
+                        <Clock size={12} className="text-indigo-400" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-white/40 uppercase tracking-widest mb-0.5">Until</p>
+                        <p className="text-white/90">{formatTime(event.endDate)}</p>
+                      </div>
+                    </div>
+                  )}
+                  {event.dressCode && (
+                    <div className="flex gap-3 items-start">
+                      <div className="p-1.5 rounded-lg bg-indigo-500/15 border border-indigo-500/20 shrink-0 mt-0.5">
+                        <Users size={12} className="text-indigo-400" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-white/40 uppercase tracking-widest mb-0.5">Dress Code</p>
+                        <p className="text-white/90">{event.dressCode}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Promo video */}
+              {event.videoUrl && (() => {
+                const embedUrl = getEmbedUrl(event.videoUrl);
+                const direct = isDirectVideo(event.videoUrl);
+                if (!embedUrl && !direct) return null;
+                return (
+                  <div className="mb-6">
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                      <PlayCircle size={12} /> Event Video
+                    </p>
+                    {embedUrl ? (
+                      <div className="w-full aspect-video rounded-xl overflow-hidden border border-border">
+                        <iframe
+                          src={embedUrl}
+                          className="w-full h-full"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          title="Event promo video"
+                        />
+                      </div>
+                    ) : (
+                      <video
+                        src={event.videoUrl}
+                        controls
+                        preload="metadata"
+                        className="w-full rounded-xl border border-border max-h-72 bg-black"
+                      >
+                        Your browser does not support video playback.
+                      </video>
+                    )}
                   </div>
-                )}
-                {event.endDate && (
-                  <div className="flex gap-3">
-                    <Clock size={15} className="text-slate-500 mt-0.5 shrink-0" />
-                    <div><p className="text-slate-400">Until</p><p className="text-white">{formatTime(event.endDate)}</p></div>
+                );
+              })()}
+
+              {/* Poster download */}
+              {event.posterImage && (
+                <div className="mb-6">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <Images size={12} /> Event Poster
+                  </p>
+                  <div className="relative rounded-xl overflow-hidden border border-border group">
+                    <img src={event.posterImage} alt="Event poster" className="w-full object-contain max-h-80" />
+                    <a
+                      href={event.posterImage}
+                      download
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white text-xs font-medium rounded-lg border border-white/20 transition-colors"
+                    >
+                      <Download size={12} /> Download Poster
+                    </a>
                   </div>
-                )}
-                {event.dressCode && (
-                  <div className="flex gap-3">
-                    <Users size={15} className="text-slate-500 mt-0.5 shrink-0" />
-                    <div><p className="text-slate-400">Dress Code</p><p className="text-white">{event.dressCode}</p></div>
+                </div>
+              )}
+
+              {/* Photo gallery */}
+              {event.media && event.media.length > 0 && (
+                <div className="mb-6">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <Images size={12} /> Photo Gallery
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {event.media.map((m) => (
+                      <a key={m.id} href={m.url} target="_blank" rel="noopener noreferrer" className="block aspect-video rounded-xl overflow-hidden border border-border hover:border-indigo-500/40 transition-colors">
+                        <img src={m.url} alt={m.caption || ""} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                      </a>
+                    ))}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* Tier picker */}
               {hasTiers && event.tiers && (
@@ -363,26 +580,27 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
                   {hasTiers && selectedTier
                     ? tierPrice > 0 ? `Buy ${selectedTier.name} — ${currency} ${tierPrice.toLocaleString()}` : `Confirm — ${selectedTier.name}`
                     : !hasTiers && isPaidEvent && event.ticketPrice ? `Buy Ticket — ${currency} ${event.ticketPrice.toLocaleString()}`
-                    : hasTiers ? "Select a tier above" : "I'll be there!"}
+                    : hasTiers ? "Select a tier above" : "Accept this invitation"}
                 </Button>
                 <Button
                   onClick={() => { setRsvpStatus("DECLINED"); setStep("rsvp"); }}
                   variant="outline" size="lg" icon={<XCircle size={18} />}
                 >
-                  Can&apos;t make it
+                  Decline with regrets
                 </Button>
               </div>
+              </div>{/* end p-6 */}
             </div>
           )}
 
           {/* STEP: RSVP DETAILS */}
           {step === "rsvp" && (
-            <div className="p-6">
+            <div className="p-6 animate-fade-in">
               <div className={`flex items-center gap-3 p-4 rounded-xl border mb-6 ${rsvpStatus === "CONFIRMED" ? "bg-emerald-600/10 border-emerald-500/20 text-emerald-300" : "bg-red-600/10 border-red-500/20 text-red-300"}`}>
                 {rsvpStatus === "CONFIRMED" ? <CheckCircle2 size={20} /> : <XCircle size={20} />}
                 <div>
-                  <p className="text-sm font-semibold">{rsvpStatus === "CONFIRMED" ? "Attending!" : "Not attending"}</p>
-                  <p className="text-xs opacity-70">{rsvpStatus === "CONFIRMED" ? "We can't wait to see you!" : "We'll miss you."}</p>
+                  <p className="text-sm font-semibold">{rsvpStatus === "CONFIRMED" ? "Accepting this invitation" : "Declining with regrets"}</p>
+                  <p className="text-xs opacity-70">{rsvpStatus === "CONFIRMED" ? "We're so glad you're coming." : "We'll miss you — hopefully next time."}</p>
                 </div>
                 <button type="button" onClick={() => setStep("view")} className="ml-auto text-xs opacity-60 hover:opacity-100 underline">Change</button>
               </div>
@@ -415,11 +633,26 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
                   </div>
                 )}
 
-                <Button onClick={handleRSVPSubmit} loading={submitting} size="lg" className="w-full mt-2" variant={rsvpStatus === "CONFIRMED" ? "primary" : "danger"}>
+                <label className="flex items-start gap-3 cursor-pointer py-1">
+                  <input
+                    type="checkbox"
+                    checked={guestConsentGiven}
+                    onChange={e => setGuestConsentGiven(e.target.checked)}
+                    className="w-4 h-4 mt-0.5 rounded accent-indigo-500 shrink-0"
+                  />
+                  <span className="text-xs text-slate-400 leading-relaxed">
+                    I agree that my name, email and phone number may be shared with the event host and processed by EventCraft to manage this RSVP.{" "}
+                    <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2">
+                      Privacy Policy
+                    </a>
+                  </span>
+                </label>
+
+                <Button onClick={handleRSVPSubmit} loading={submitting} size="lg" className="w-full mt-2" variant={rsvpStatus === "CONFIRMED" ? "primary" : "danger"} disabled={!guestConsentGiven}>
                   {submitting ? "Submitting..."
                     : rsvpStatus === "CONFIRMED" && isPaidEvent && (hasTiers ? tierPrice > 0 : true)
                       ? "Continue to Payment →"
-                      : rsvpStatus === "CONFIRMED" ? "Confirm Attendance" : "Submit RSVP"}
+                      : rsvpStatus === "CONFIRMED" ? "Confirm my attendance" : "Submit my response"}
                 </Button>
               </div>
             </div>
@@ -427,7 +660,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
 
           {/* STEP: MOBILE MONEY PAYMENT */}
           {step === "payment" && (
-            <div className="p-6">
+            <div className="p-6 animate-fade-in">
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/20">
                   <Smartphone size={20} className="text-emerald-400" />
@@ -502,7 +735,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
 
           {/* STEP: WAITING FOR USSD APPROVAL */}
           {step === "waiting" && (
-            <div className="p-8 text-center">
+            <div className="p-8 text-center animate-fade-in">
               <div className="w-20 h-20 rounded-2xl bg-amber-500/15 border border-amber-500/20 flex items-center justify-center mx-auto mb-5">
                 <Loader2 size={36} className="text-amber-400 animate-spin" />
               </div>
@@ -530,49 +763,37 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
 
           {/* STEP: DONE */}
           {step === "done" && submittedGuest && (
-            <div className="p-8 text-center">
-              <div className={`w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-5 ${submittedGuest.status === "CONFIRMED" ? "bg-emerald-600/15 border border-emerald-500/30" : "bg-slate-700/40 border border-border"}`}>
-                {submittedGuest.status === "CONFIRMED"
-                  ? <CheckCircle2 size={36} className="text-emerald-400" />
-                  : <XCircle size={36} className="text-slate-400" />}
-              </div>
-              <h2 className="text-2xl font-bold text-white mb-2">
-                {submittedGuest.status === "CONFIRMED" ? "You're on the list!" : "RSVP submitted"}
+            <div className="p-8 text-center animate-fade-in">
+              {submittedGuest.status === "CONFIRMED" ? (
+                <div className="text-6xl mb-4">🎉</div>
+              ) : (
+                <div className="w-16 h-16 rounded-2xl bg-slate-700/40 border border-border flex items-center justify-center mx-auto mb-5">
+                  <XCircle size={32} className="text-slate-400" />
+                </div>
+              )}
+              <h2 className="text-2xl font-black text-white tracking-tight mb-2">
+                {submittedGuest.status === "CONFIRMED" ? "You're on the list!" : "Response received"}
               </h2>
-              <p className="text-slate-400 mb-6">
+              <p className="text-slate-400 mb-6 leading-relaxed">
                 {submittedGuest.status === "CONFIRMED"
-                  ? `Thanks, ${submittedGuest.name}! We're excited to see you at ${event.title}.`
-                  : `Thanks for letting us know, ${submittedGuest.name}. We'll miss you at ${event.title}.`}
+                  ? `We're delighted to have you, ${submittedGuest.name}. See you at ${event.title}.`
+                  : `Thank you for letting us know, ${submittedGuest.name}. We hope to see you next time.`}
               </p>
 
               {submittedGuest.status === "CONFIRMED" && (
                 <>
-                  <div className="bg-slate-800/40 border border-border rounded-xl p-4 text-sm text-left mb-4">
-                    <p className="text-slate-400 mb-1 font-medium">Event details:</p>
-                    <p className="text-white">{formatDate(event.date)} at {formatTime(event.date)}</p>
-                    <p className="text-slate-400">{event.location}</p>
-                  </div>
-
-                  <div className="mb-5 flex justify-center">
-                    <AddToCalendar
-                      title={event.title}
-                      start={new Date(event.date)}
-                      end={event.endDate ? new Date(event.endDate) : undefined}
-                      location={[event.location, event.address].filter(Boolean).join(", ") || undefined}
-                      qrToken={submittedGuest.qrToken}
-                      size="sm"
-                    />
-                  </div>
-
+                  {/* QR ticket — the dominant element on this screen */}
                   <div className="mb-6 flex flex-col items-center gap-3">
                     {submittedGuest.qrToken ? (
                       <>
-                        {guestQR && (
-                          <div className="bg-white p-2.5 rounded-xl shadow-lg">
-                            <img src={guestQR} alt="Your check-in QR code" className="w-28 h-28" />
+                        {guestQR ? (
+                          <div className="bg-white p-3 rounded-2xl shadow-xl">
+                            <img src={guestQR} alt="Your check-in QR code" className="w-40 h-40" />
                           </div>
+                        ) : (
+                          <div className="w-10 h-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
                         )}
-                        <p className="text-xs text-slate-500">Your check-in QR code — show this at the door</p>
+                        <p className="text-xs text-slate-500">Your check-in QR — show this at the entrance</p>
                         <div className="flex gap-2 flex-wrap justify-center">
                           <a href={`/ticket/${submittedGuest.qrToken}`} target="_blank" rel="noopener noreferrer">
                             <Button size="sm" icon={<QrCode size={14} />}>View Full Ticket</Button>
@@ -588,8 +809,25 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
                         </div>
                       </>
                     ) : (
-                      <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                      <div className="w-10 h-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
                     )}
+                  </div>
+
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-sm text-left mb-4">
+                    <p className="text-white/50 text-xs uppercase tracking-wider mb-2">Event details</p>
+                    <p className="text-white font-medium">{formatDate(event.date)} at {formatTime(event.date)}</p>
+                    <p className="text-slate-400">{event.location}</p>
+                  </div>
+
+                  <div className="mb-5 flex justify-center">
+                    <AddToCalendar
+                      title={event.title}
+                      start={new Date(event.date)}
+                      end={event.endDate ? new Date(event.endDate) : undefined}
+                      location={[event.location, event.address].filter(Boolean).join(", ") || undefined}
+                      qrToken={submittedGuest.qrToken}
+                      size="sm"
+                    />
                   </div>
                 </>
               )}
@@ -599,10 +837,10 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
               </a>
             </div>
           )}
-        </div>
+        </div>{/* end glass card */}
 
-        <p className="text-center text-xs text-slate-600 mt-6">
-          Powered by <span className="text-indigo-500">EventCraft</span>
+        <p className="text-center text-xs text-white/20 mt-6">
+          Powered by <span className="text-indigo-400">EventCraft</span>
         </p>
       </div>
     </div>

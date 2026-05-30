@@ -3,7 +3,7 @@
 import { useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Lock, Sparkles, CheckCircle2, Eye, EyeOff } from "lucide-react";
+import { Lock, Sparkles, CheckCircle2, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import toast from "react-hot-toast";
@@ -53,45 +53,48 @@ export default function ResetPasswordPage({ params }: { params: Promise<{ token:
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
-            <Sparkles size={16} className="text-white" />
-          </div>
-          <span className="font-bold text-white text-lg">EventCraft</span>
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_0%,rgba(99,102,241,0.15),transparent)] pointer-events-none" />
+
+      <div className="relative w-full max-w-sm">
+        <div className="flex justify-center mb-8">
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-900/50">
+              <Sparkles size={18} className="text-white" />
+            </div>
+            <span className="font-black text-white text-xl tracking-tight">Event<span className="text-indigo-400">Craft</span></span>
+          </Link>
         </div>
 
-        <div className="bg-card border border-border rounded-2xl p-8">
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-8 shadow-[0_24px_60px_rgba(0,0,0,0.4)] backdrop-blur-sm">
           {done ? (
-            <div className="text-center">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-4">
-                <CheckCircle2 size={28} className="text-emerald-400" />
+            <div className="text-center py-2">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-5">
+                <CheckCircle2 size={30} className="text-emerald-400" />
               </div>
-              <h1 className="text-xl font-bold text-white mb-2">Password reset!</h1>
-              <p className="text-slate-400 text-sm">Redirecting you to login...</p>
+              <h1 className="text-xl font-black text-white tracking-tight mb-2">Password reset!</h1>
+              <p className="text-slate-400 text-sm">Redirecting you to login…</p>
             </div>
           ) : (
             <>
-              <div className="mb-6">
-                <h1 className="text-xl font-bold text-white mb-1">Set new password</h1>
-                <p className="text-slate-400 text-sm">Choose a strong password for your account.</p>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-indigo-600/15 border border-indigo-500/20 flex items-center justify-center shrink-0">
+                  <ShieldCheck size={18} className="text-indigo-400" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-black text-white tracking-tight">Set new password</h1>
+                  <p className="text-slate-500 text-xs">Choose a strong password</p>
+                </div>
               </div>
 
               <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <div>
-                  <Input
-                    label="New Password"
-                    type={showPass ? "text" : "password"}
-                    placeholder="At least 8 characters"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    icon={<Lock size={16} />}
+                  <Input label="New Password" type={showPass ? "text" : "password"} placeholder="At least 8 characters"
+                    value={password} onChange={e => setPassword(e.target.value)} icon={<Lock size={16} />}
                     iconRight={
                       <button type="button" onClick={() => setShowPass(s => !s)} className="hover:text-slate-300 transition-colors">
-                        {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                        {showPass ? <Eye size={15} /> : <EyeOff size={15} />}
                       </button>
-                    }
-                  />
+                    } />
                   {password && (
                     <div className="mt-2 flex items-center gap-2">
                       <div className="flex gap-1 flex-1">
@@ -105,26 +108,17 @@ export default function ResetPasswordPage({ params }: { params: Promise<{ token:
                     </div>
                   )}
                 </div>
-
-                <Input
-                  label="Confirm Password"
-                  type="password"
-                  placeholder="Same as above"
-                  value={confirm}
-                  onChange={e => setConfirm(e.target.value)}
+                <Input label="Confirm Password" type="password" placeholder="Same as above"
+                  value={confirm} onChange={e => setConfirm(e.target.value)}
                   icon={confirm && confirm === password ? <CheckCircle2 size={16} className="text-emerald-400" /> : <Lock size={16} />}
-                  error={confirm && confirm !== password ? "Passwords don't match" : undefined}
-                />
-
+                  error={confirm && confirm !== password ? "Passwords don't match" : undefined} />
                 <Button type="submit" loading={loading} disabled={!password || !confirm} className="w-full">
                   Reset Password
                 </Button>
               </form>
 
               <div className="mt-5 text-center">
-                <Link href="/login" className="text-sm text-slate-500 hover:text-white transition-colors">
-                  Back to login
-                </Link>
+                <Link href="/login" className="text-sm text-slate-500 hover:text-white transition-colors">Back to login</Link>
               </div>
             </>
           )}

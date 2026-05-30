@@ -169,7 +169,7 @@ export default function LiveCheckinPage({ params }: { params: Promise<{ id: stri
 
         {/* Attendance progress */}
         {data && data.stats.confirmed > 0 && (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+          <div className="bg-card border border-border rounded-2xl p-5">
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-semibold text-white">Attendance Rate</span>
               <span className={`text-2xl font-black ${attendanceRate >= 80 ? "text-emerald-400" : attendanceRate >= 50 ? "text-amber-400" : "text-slate-400"}`}>
@@ -194,7 +194,7 @@ export default function LiveCheckinPage({ params }: { params: Promise<{ id: stri
 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Recent arrivals */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-800">
               <h2 className="text-sm font-semibold text-white flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -229,7 +229,7 @@ export default function LiveCheckinPage({ params }: { params: Promise<{ id: stri
           </div>
 
           {/* Full guest list */}
-          <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <div className="lg:col-span-2 bg-card border border-border rounded-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-800 flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />

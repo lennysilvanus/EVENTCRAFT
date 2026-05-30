@@ -14,13 +14,17 @@ import {
   Clock,
   Tag,
   Hash,
-  StickyNote,
   Globe,
   Lock,
   Ticket,
+  RefreshCw,
+  LayoutTemplate,
 } from "lucide-react";
 import TierEditor, { type TierDraft } from "@/components/ui/TierEditor";
 import ImageUpload from "@/components/ui/ImageUpload";
+import MediaGalleryUpload from "@/components/ui/MediaGalleryUpload";
+import VideoUpload from "@/components/ui/VideoUpload";
+import { Image as ImageIcon2 } from "lucide-react";
 import toast from "react-hot-toast";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import Button from "@/components/ui/Button";
@@ -47,6 +51,8 @@ export default function NewEventPage() {
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [showAiConsent, setShowAiConsent] = useState(false);
+  const [givingAiConsent, setGivingAiConsent] = useState(false);
 
   const [form, setForm] = useState({
     title: "",
@@ -63,13 +69,19 @@ export default function NewEventPage() {
     notes: "",
     inviteText: "",
     isPublic: false,
+    isTemplate: false,
+    recurrenceType: "NONE",
+    recurrenceEnd: "",
     tone: "elegant",
     isPaid: false,
     ticketCurrency: "TZS",
     coverImage: "",
+    posterImage: "",
+    videoUrl: "",
   });
 
   const [tiers, setTiers] = useState<TierDraft[]>([]);
+  const [galleryImages, setGalleryImages] = useState<{ url: string }[]>([]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -86,11 +98,7 @@ export default function NewEventPage() {
     return Object.keys(e).length === 0;
   };
 
-  const handleGenerateInvite = async () => {
-    if (!form.title || !form.date || !form.location || !form.description) {
-      toast.error("Please complete the event details first");
-      return;
-    }
+  const doGenerateInvite = async () => {
     setGenerating(true);
     try {
       const res = await fetch("/api/ai/generate-invite", {
@@ -108,13 +116,42 @@ export default function NewEventPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        if (data.code === "AI_CONSENT_REQUIRED") { setShowAiConsent(true); return; }
+        throw new Error(data.error);
+      }
       set("inviteText", data.data.inviteText);
       toast.success("Invite text generated!");
     } catch {
       toast.error("Failed to generate invite. Check your API key.");
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleGenerateInvite = async () => {
+    if (!form.title || !form.date || !form.location || !form.description) {
+      toast.error("Please complete the event details first");
+      return;
+    }
+    await doGenerateInvite();
+  };
+
+  const handleGiveAiConsent = async () => {
+    setGivingAiConsent(true);
+    try {
+      const res = await fetch("/api/auth/consent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "AI_PROCESSING" }),
+      });
+      if (!res.ok) throw new Error("Failed to record consent");
+      setShowAiConsent(false);
+      await doGenerateInvite();
+    } catch {
+      toast.error("Could not record consent. Please try again.");
+    } finally {
+      setGivingAiConsent(false);
     }
   };
 
@@ -145,7 +182,12 @@ export default function NewEventPage() {
           notes: form.notes,
           inviteText: form.inviteText,
           isPublic: form.isPublic,
+          isTemplate: form.isTemplate,
+          recurrenceType: form.recurrenceType,
+          recurrenceEnd: form.recurrenceType !== "NONE" && form.recurrenceEnd ? new Date(`${form.recurrenceEnd}T23:59`).toISOString() : undefined,
           coverImage: form.coverImage || null,
+          posterImage: form.posterImage || null,
+          videoUrl: form.videoUrl || null,
           ticketCurrency: form.isPaid ? form.ticketCurrency : undefined,
           tiers: form.isPaid && tiers.length > 0
             ? tiers.filter(t => t.name && t.price).map((t, i) => ({
@@ -160,6 +202,14 @@ export default function NewEventPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      // Upload gallery images to the newly created event
+      for (const img of galleryImages) {
+        await fetch(`/api/events/${data.data.id}/media`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: img.url }),
+        }).catch(() => {});
+      }
       toast.success("Event created!");
       router.push(`/events/${data.data.id}`);
     } catch (err) {
@@ -174,7 +224,7 @@ export default function NewEventPage() {
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white mb-1">Create New Event</h1>
+          <h1 className="text-2xl font-black text-white tracking-tight mb-1">Create New Event</h1>
           <p className="text-slate-400 text-sm">AI will craft a beautiful invite based on your details</p>
         </div>
 
@@ -208,6 +258,27 @@ export default function NewEventPage() {
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1.5">Cover Image</label>
               <ImageUpload value={form.coverImage} onChange={url => set("coverImage", url)} />
+            </div>
+            <div>
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-300 mb-1.5">
+                <ImageIcon2 size={14} className="text-purple-400" /> Event Poster
+                <span className="text-xs text-slate-500 font-normal">(downloadable by guests)</span>
+              </label>
+              <ImageUpload value={form.posterImage} onChange={url => set("posterImage", url)} />
+            </div>
+            <div>
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-300 mb-1.5">
+                Promo Video
+                <span className="text-xs text-slate-500 font-normal">(upload file or paste YouTube/Vimeo link)</span>
+              </label>
+              <VideoUpload value={form.videoUrl} onChange={url => set("videoUrl", url)} />
+            </div>
+            <div>
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-300 mb-1.5">
+                <ImageIcon2 size={14} className="text-indigo-400" /> Photo Gallery
+                <span className="text-xs text-slate-500 font-normal">(up to 20 images)</span>
+              </label>
+              <MediaGalleryUpload images={galleryImages} onChange={setGalleryImages} />
             </div>
             <Input
               label="Event Title *"
@@ -427,16 +498,92 @@ export default function NewEventPage() {
                     {form.isPublic ? "Public Event" : "Private Event"}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {form.isPublic ? "Anyone with the link can RSVP" : "Only invited guests can RSVP"}
+                    {form.isPublic ? "Discoverable on /explore" : "Only invited guests can RSVP"}
                   </p>
                 </div>
               </div>
               <button
                 type="button"
+                aria-label={form.isPublic ? "Switch to private event" : "Switch to public event"}
                 onClick={() => set("isPublic", !form.isPublic)}
                 className={`relative w-12 h-6 rounded-full transition-colors ${form.isPublic ? "bg-emerald-600" : "bg-slate-700"}`}
               >
                 <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${form.isPublic ? "translate-x-7" : "translate-x-1"}`} />
+              </button>
+            </div>
+
+            {/* Recurrence */}
+            <div className="border border-border rounded-xl overflow-hidden">
+              <div className="flex items-center justify-between p-4 bg-slate-800/40">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${form.recurrenceType !== "NONE" ? "bg-indigo-600/15 text-indigo-400" : "bg-slate-700/60 text-slate-400"}`}>
+                    <RefreshCw size={18} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-white">Recurring Event</p>
+                    <p className="text-xs text-slate-500">Repeat this event on a schedule</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  aria-label={form.recurrenceType !== "NONE" ? "Disable recurrence" : "Enable recurrence"}
+                  onClick={() => set("recurrenceType", form.recurrenceType === "NONE" ? "WEEKLY" : "NONE")}
+                  className={`relative w-12 h-6 rounded-full transition-colors ${form.recurrenceType !== "NONE" ? "bg-indigo-600" : "bg-slate-700"}`}
+                >
+                  <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${form.recurrenceType !== "NONE" ? "translate-x-7" : "translate-x-1"}`} />
+                </button>
+              </div>
+              {form.recurrenceType !== "NONE" && (
+                <div className="p-4 border-t border-border bg-indigo-500/5 flex flex-col gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Repeat every</label>
+                    <div className="flex gap-2">
+                      {(["WEEKLY", "MONTHLY", "YEARLY"] as const).map(r => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => set("recurrenceType", r)}
+                          className={`px-4 py-2 rounded-lg text-xs font-medium border transition-all ${
+                            form.recurrenceType === r
+                              ? "bg-indigo-600/20 border-indigo-500/40 text-indigo-300"
+                              : "border-border text-slate-400 hover:border-slate-500 hover:text-white"
+                          }`}
+                        >
+                          {r === "WEEKLY" ? "Week" : r === "MONTHLY" ? "Month" : "Year"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <Input
+                    label="Repeat until (optional)"
+                    type="date"
+                    value={form.recurrenceEnd}
+                    onChange={e => set("recurrenceEnd", e.target.value)}
+                    icon={<Calendar size={16} />}
+                    hint="Leave empty to repeat indefinitely"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Save as Template */}
+            <div className="flex items-center justify-between p-4 bg-slate-800/40 border border-border rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${form.isTemplate ? "bg-purple-600/15 text-purple-400" : "bg-slate-700/60 text-slate-400"}`}>
+                  <LayoutTemplate size={18} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-white">Save as Template</p>
+                  <p className="text-xs text-slate-500">Reuse this event structure for future events</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                aria-label={form.isTemplate ? "Unmark as template" : "Save as template"}
+                onClick={() => set("isTemplate", !form.isTemplate)}
+                className={`relative w-12 h-6 rounded-full transition-colors ${form.isTemplate ? "bg-purple-600" : "bg-slate-700"}`}
+              >
+                <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${form.isTemplate ? "translate-x-7" : "translate-x-1"}`} />
               </button>
             </div>
 
@@ -486,6 +633,43 @@ export default function NewEventPage() {
           </div>
         )}
       </div>
+
+      {/* AI Processing consent modal */}
+      {showAiConsent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 rounded-xl bg-indigo-500/15 border border-indigo-500/20">
+                <Wand2 size={20} className="text-indigo-400" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">AI Invite Generation</h3>
+                <p className="text-xs text-slate-400">One-time consent required</p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-300 leading-relaxed mb-2">
+              To generate invite text, EventCraft sends your event details (title, date, location, description) to <strong className="text-white">Anthropic&apos;s Claude API</strong>, a third-party AI processor.
+            </p>
+            <p className="text-xs text-slate-500 mb-5">
+              No guest data is sent. You can withdraw this consent at any time via{" "}
+              <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2">Privacy Policy</a>.
+            </p>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setShowAiConsent(false)}>
+                Cancel
+              </Button>
+              <Button
+                className="flex-1"
+                loading={givingAiConsent}
+                icon={<Wand2 size={15} />}
+                onClick={handleGiveAiConsent}
+              >
+                I agree — Generate
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }

@@ -100,7 +100,7 @@ export default function EventReportPage({ params }: { params: Promise<{ id: stri
               <Button variant="ghost" size="sm" icon={<ArrowLeft size={16} />}>Back</Button>
             </Link>
             <div>
-              <h1 className="text-2xl font-bold text-white">Event Report</h1>
+              <h1 className="text-2xl font-black text-white tracking-tight">Event Report</h1>
               {report && (
                 <p className="text-slate-400 text-sm mt-0.5">
                   {getCategoryIcon(report.event.category)} {report.event.title} · {formatDate(report.event.date)}

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { Card3D } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/Badge";
 import Modal from "@/components/ui/Modal";
@@ -380,226 +381,205 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   return (
     <DashboardLayout>
       <div className="flex flex-col gap-6">
-        {/* Back + Header */}
-        <div>
-          <Link href="/events" className="inline-flex items-center gap-2 text-slate-400 hover:text-white text-sm mb-4 transition-colors">
-            <ArrowLeft size={15} /> Back to Events
-          </Link>
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-            <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-xl bg-indigo-600/15 border border-indigo-500/20 flex items-center justify-center text-2xl shrink-0">
-                {getCategoryIcon(event.category)}
-              </div>
-              <div>
-                <div className="flex items-center gap-3 flex-wrap mb-1">
-                  <h1 className="text-2xl font-bold text-white">{event.title}</h1>
-                  <StatusBadge status={event.status} />
-                </div>
-                <div className="flex flex-wrap gap-3 text-sm text-slate-400">
-                  <span className="flex items-center gap-1.5"><Calendar size={14} />{formatDate(event.date)}</span>
-                  <span className="flex items-center gap-1.5"><Clock size={14} />{formatTime(event.date)}</span>
-                  <span className="flex items-center gap-1.5"><MapPin size={14} />{event.location}</span>
-                  <span className="flex items-center gap-1.5">{event.isPublic ? <Globe size={14} /> : <Lock size={14} />}{event.isPublic ? "Public" : "Private"}</span>
-                </div>
-              </div>
+
+        {/* ── Back nav ──────────────────────────────────────────────── */}
+        <Link href="/events" className="inline-flex items-center gap-2 text-slate-400 hover:text-white text-sm transition-colors w-fit">
+          <ArrowLeft size={15} /> Back to Events
+        </Link>
+
+        {/* ── Hero ──────────────────────────────────────────────────── */}
+        <div className="relative rounded-2xl overflow-hidden h-56 sm:h-64">
+          {(event as EventDetail & { coverImage?: string | null }).coverImage ? (
+            <img
+              src={(event as EventDetail & { coverImage?: string | null }).coverImage!}
+              alt={event.title}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-[radial-gradient(ellipse_at_top_left,rgba(99,102,241,0.35),rgba(7,9,26,0.9))] flex items-center justify-center">
+              <span className="text-8xl opacity-30">{getCategoryIcon(event.category)}</span>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <Link href={`/events/${id}/live`}>
-                <Button variant="outline" size="sm" icon={<Activity size={14} className="text-emerald-400" />}>
-                  Live
-                </Button>
-              </Link>
-              <Link href={`/events/${id}/report`}>
-                <Button variant="outline" size="sm" icon={<BarChart2 size={14} className="text-indigo-400" />}>
-                  Report
-                </Button>
-              </Link>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => { loadTeam(); setShowTeam(true); }}
-                icon={<Users size={14} />}
-              >
-                Team
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDuplicate}
-                loading={duplicating}
-                icon={<Copy size={14} />}
-              >
-                Duplicate
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={togglePublish}
-                loading={publishing}
-                icon={event.status === "PUBLISHED" ? <Lock size={14} /> : <Globe size={14} />}
-              >
-                {event.status === "PUBLISHED" ? "Unpublish" : "Publish"}
-              </Button>
-              <Link href={`/events/${id}/edit`}>
-                <Button variant="outline" size="sm" icon={<Edit2 size={14} />}>Edit</Button>
-              </Link>
-              <Button variant="danger" size="sm" onClick={handleDelete} loading={deleting} icon={<Trash2 size={14} />}>
-                Delete
-              </Button>
+          )}
+          {/* Gradient overlay — heavy at bottom for legibility */}
+          <div className="absolute inset-0 bg-linear-to-t from-black/95 via-black/50 to-black/10" />
+
+          {/* Bottom: title + metadata pills */}
+          <div className="absolute bottom-0 left-0 right-0 p-6">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <StatusBadge status={event.status} />
+              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-black/40 text-white/80 backdrop-blur-sm border border-white/10">
+                {getCategoryIcon(event.category)} {event.category}
+              </span>
+              {event.isPublic
+                ? <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"><Globe size={10} className="inline mr-1" />Public</span>
+                : <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-700/60 text-slate-400 border border-slate-600/30"><Lock size={10} className="inline mr-1" />Private</span>}
             </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-3 drop-shadow-lg">{event.title}</h1>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { icon: <Calendar size={10} />, text: formatDate(event.date) },
+                { icon: <Clock size={10} />,    text: formatTime(event.date) },
+                { icon: <MapPin size={10} />,   text: event.location },
+              ].map(({ icon, text }) => (
+                <span key={text} className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full bg-white/10 text-white/80 backdrop-blur-sm border border-white/10">
+                  <span className="text-indigo-300">{icon}</span>{text}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Top-right: action buttons */}
+          <div className="absolute top-4 right-4 flex items-center gap-1.5 flex-wrap justify-end">
+            <Link href={`/events/${id}/live`}>
+              <button type="button" className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/40 hover:bg-black/60 backdrop-blur-sm border border-white/10 text-emerald-300 text-xs font-semibold transition-colors">
+                <Activity size={12} /> Live
+              </button>
+            </Link>
+            <Link href={`/events/${id}/report`}>
+              <button type="button" className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/40 hover:bg-black/60 backdrop-blur-sm border border-white/10 text-indigo-300 text-xs font-semibold transition-colors">
+                <BarChart2 size={12} /> Report
+              </button>
+            </Link>
+            <button type="button" onClick={() => { loadTeam(); setShowTeam(true); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/40 hover:bg-black/60 backdrop-blur-sm border border-white/10 text-white/70 text-xs font-semibold transition-colors">
+              <Users size={12} /> Team
+            </button>
+            <button type="button" onClick={handleDuplicate} disabled={duplicating}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/40 hover:bg-black/60 backdrop-blur-sm border border-white/10 text-white/70 text-xs font-semibold transition-colors">
+              <Copy size={12} /> Duplicate
+            </button>
           </div>
         </div>
 
-        {/* Stats row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {/* ── Primary actions ──────────────────────────────────────── */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={togglePublish} loading={publishing} size="sm"
+            variant={event.status === "PUBLISHED" ? "outline" : "primary"}
+            icon={event.status === "PUBLISHED" ? <Lock size={14} /> : <Globe size={14} />}>
+            {event.status === "PUBLISHED" ? "Unpublish" : "Publish"}
+          </Button>
+          <Link href={`/events/${id}/edit`}>
+            <Button variant="outline" size="sm" icon={<Edit2 size={14} />}>Edit</Button>
+          </Link>
+          <Button variant="outline" size="sm" onClick={() => copyInviteLink(event.inviteToken)} icon={<CopyIcon size={14} />}>
+            Copy Link
+          </Button>
+          <Button variant="outline" size="sm" onClick={shareWhatsApp} icon={<MessageCircle size={14} />}>
+            WhatsApp
+          </Button>
+          <div className="ml-auto">
+            <Button variant="danger" size="sm" onClick={handleDelete} loading={deleting} icon={<Trash2 size={14} />}>
+              Delete
+            </Button>
+          </div>
+        </div>
+
+        {/* ── Stat cards ───────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
           {[
-            { label: "Confirmed", value: confirmed, color: "text-emerald-400", bg: "bg-emerald-400/10" },
-            { label: "Pending", value: pending, color: "text-amber-400", bg: "bg-amber-400/10" },
-            { label: "Declined", value: declined, color: "text-red-400", bg: "bg-red-400/10" },
-            { label: "Checked In", value: checkedIn, color: "text-indigo-400", bg: "bg-indigo-400/10" },
-          ].map(({ label, value, color, bg }) => (
-            <div key={label} className="bg-card border border-border rounded-xl p-4">
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-2">{label}</p>
-              <div className="flex items-end justify-between">
-                <p className={`text-3xl font-bold ${color}`}>{value}</p>
-                <p className="text-xs text-slate-500">/{total}</p>
-              </div>
-              {total > 0 && (
-                <div className="mt-2 h-1 bg-slate-700 rounded-full overflow-hidden">
-                  <div className={`h-full ${bg.replace("/10", "")} rounded-full`} style={{ width: `${Math.round((value / total) * 100)}%` }} />
+            { label: "Confirmed", value: confirmed, color: "text-emerald-400", border: "border-emerald-500/20", bg: "bg-emerald-500/10", prog: "[&::-webkit-progress-value]:bg-emerald-500 [&::-moz-progress-bar]:bg-emerald-500" },
+            { label: "Pending",   value: pending,   color: "text-amber-400",   border: "border-amber-500/20",  bg: "bg-amber-500/10",  prog: "[&::-webkit-progress-value]:bg-amber-500 [&::-moz-progress-bar]:bg-amber-500"   },
+            { label: "Declined",  value: declined,  color: "text-red-400",     border: "border-red-500/20",    bg: "bg-red-500/10",    prog: "[&::-webkit-progress-value]:bg-red-500 [&::-moz-progress-bar]:bg-red-500"       },
+            { label: "Checked In",value: checkedIn, color: "text-indigo-400",  border: "border-indigo-500/20", bg: "bg-indigo-500/10", prog: "[&::-webkit-progress-value]:bg-indigo-500 [&::-moz-progress-bar]:bg-indigo-500" },
+          ].map(s => (
+            <Card3D key={s.label} intensity="normal">
+              <div className={`bg-card border ${s.border} rounded-xl p-5`}>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{s.label}</p>
+                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${s.bg} ${s.color}`}>{total > 0 ? `${Math.round((s.value / total) * 100)}%` : "—"}</span>
                 </div>
-              )}
-            </div>
+                <p className={`text-3xl font-black tracking-tight ${s.color} mb-3`}>{s.value}</p>
+                <progress value={total > 0 ? s.value : 0} max={total || 1} aria-label={s.label}
+                  className={`w-full h-1.5 rounded-full [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-white/10 [&::-webkit-progress-value]:rounded-full [&::-moz-progress-bar]:rounded-full ${s.prog}`} />
+              </div>
+            </Card3D>
           ))}
         </div>
 
-        {/* Tabs */}
+        {/* ── Tabs ─────────────────────────────────────────────────── */}
         <div className="flex gap-1 bg-card border border-border rounded-xl p-1 w-fit">
           {(["overview", "guests", "share"] as const).map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-all ${
+            <button key={tab} type="button" onClick={() => setActiveTab(tab)}
+              className={`px-5 py-2 rounded-lg text-sm font-semibold capitalize transition-all ${
                 activeTab === tab
-                  ? "bg-indigo-600 text-white shadow"
+                  ? "bg-indigo-600 text-white shadow-[0_2px_0_0_#312e81]"
                   : "text-slate-400 hover:text-white"
-              }`}
-            >
-              {tab}
-              {tab === "guests" && ` (${total})`}
+              }`}>
+              {tab}{tab === "guests" && <span className="ml-1.5 text-xs opacity-60">({total})</span>}
             </button>
           ))}
         </div>
 
-        {/* Overview Tab */}
+        {/* ── Overview Tab ─────────────────────────────────────────── */}
         {activeTab === "overview" && (
           <div className="grid lg:grid-cols-2 gap-6">
-            <div className="bg-card border border-border rounded-xl p-6">
-              <h3 className="text-sm font-semibold text-white mb-4">Event Details</h3>
-              <div className="flex flex-col gap-3 text-sm">
-                <div className="flex gap-3">
-                  <Calendar size={16} className="text-slate-500 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-slate-400">Date & Time</p>
-                    <p className="text-white">{formatDateTime(event.date)}</p>
-                    {event.endDate && <p className="text-slate-500 text-xs">Until {formatDateTime(event.endDate)}</p>}
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <MapPin size={16} className="text-slate-500 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-slate-400">Location</p>
-                    <p className="text-white">{event.location}</p>
-                    {event.address && <p className="text-slate-500 text-xs">{event.address}</p>}
-                  </div>
-                </div>
-                {event.dressCode && (
-                  <div className="flex gap-3">
-                    <Users size={16} className="text-slate-500 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-slate-400">Dress Code</p>
-                      <p className="text-white">{event.dressCode}</p>
+            <Card3D intensity="subtle">
+              <div className="bg-card border border-border rounded-xl p-6">
+                <h3 className="text-sm font-black text-white mb-5 tracking-tight">Event Details</h3>
+                <div className="flex flex-col gap-4 text-sm">
+                  {[
+                    { icon: <Calendar size={13} />, label: "Date & Time", value: formatDateTime(event.date), sub: event.endDate ? `Until ${formatDateTime(event.endDate)}` : null },
+                    { icon: <MapPin size={13} />,   label: "Location",    value: event.location,              sub: event.address ?? null },
+                    ...(event.dressCode ? [{ icon: <Eye size={13} />, label: "Dress Code", value: event.dressCode, sub: null }] : []),
+                    ...(event.maxGuests ? [{ icon: <Users size={13} />, label: "Capacity", value: `${confirmed} / ${event.maxGuests} confirmed`, sub: null }] : []),
+                  ].map(({ icon, label, value, sub }) => (
+                    <div key={label} className="flex gap-3 items-start">
+                      <div className="p-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/15 text-indigo-400 shrink-0 mt-0.5">{icon}</div>
+                      <div>
+                        <p className="text-xs text-slate-500 uppercase tracking-wider mb-0.5">{label}</p>
+                        <p className="text-white font-medium">{value}</p>
+                        {sub && <p className="text-xs text-slate-500 mt-0.5">{sub}</p>}
+                      </div>
                     </div>
-                  </div>
-                )}
-                {event.maxGuests && (
-                  <div className="flex gap-3">
-                    <Users size={16} className="text-slate-500 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-slate-400">Capacity</p>
-                      <p className="text-white">{confirmed} / {event.maxGuests} guests</p>
-                    </div>
-                  </div>
-                )}
+                  ))}
+                </div>
               </div>
-            </div>
+            </Card3D>
 
             {event.inviteText && (
-              <div className="bg-card border border-border rounded-xl p-6">
-                <h3 className="text-sm font-semibold text-white mb-4">Invitation Text</h3>
-                <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{event.inviteText}</p>
-                <div className="mt-4 pt-4 border-t border-border flex gap-2">
-                  <Button size="sm" variant="ghost" onClick={shareWhatsApp} icon={<MessageCircle size={14} />}>
-                    Share via WhatsApp
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => copyInviteLink(event.inviteToken)} icon={<Copy size={14} />}>
-                    Copy Link
-                  </Button>
+              <Card3D intensity="subtle">
+                <div className="bg-card border border-border rounded-xl p-6 flex flex-col">
+                  <h3 className="text-sm font-black text-white mb-5 tracking-tight">Invitation Text</h3>
+                  <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap flex-1 italic">{event.inviteText}</p>
+                  <div className="mt-5 pt-4 border-t border-border flex gap-2">
+                    <Button size="sm" variant="ghost" onClick={shareWhatsApp} icon={<MessageCircle size={14} />}>WhatsApp</Button>
+                    <Button size="sm" variant="ghost" onClick={() => copyInviteLink(event.inviteToken)} icon={<Copy size={14} />}>Copy Link</Button>
+                  </div>
                 </div>
-              </div>
+              </Card3D>
             )}
           </div>
         )}
 
-        {/* Guests Tab */}
+        {/* ── Guests Tab ───────────────────────────────────────────── */}
         {activeTab === "guests" && (
           <div className="bg-card border border-border rounded-xl overflow-hidden">
             <div className="px-6 py-4 border-b border-border flex flex-col gap-3">
               <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 <div className="flex-1">
-                  <Input
-                    placeholder="Search guests..."
-                    value={guestSearch}
-                    onChange={e => setGuestSearch(e.target.value)}
-                    icon={<Users size={15} />}
-                  />
+                  <Input placeholder="Search guests..." value={guestSearch}
+                    onChange={e => setGuestSearch(e.target.value)} icon={<Users size={15} />} />
                 </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setShowImport(true)} icon={<Upload size={14} />}>
-                    Import CSV
-                  </Button>
+                <div className="flex gap-2 flex-wrap">
+                  <Button size="sm" variant="outline" onClick={() => setShowImport(true)} icon={<Upload size={14} />}>Import CSV</Button>
                   {event.guests.length > 0 && (
                     <a href={`/api/events/${id}/guests/export`} download>
-                      <Button size="sm" variant="outline" icon={<Download size={14} />}>
-                        Export CSV
-                      </Button>
+                      <Button size="sm" variant="outline" icon={<Download size={14} />}>Export</Button>
                     </a>
                   )}
-                  <Button size="sm" variant="outline" onClick={() => setShowNotify(true)} icon={<Mail size={14} />}>
-                    Notify Guests
-                  </Button>
-                  <Button size="sm" onClick={() => setShowAddGuest(true)} icon={<Plus size={14} />}>
-                    Add Guest
-                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setShowNotify(true)} icon={<Mail size={14} />}>Notify</Button>
+                  <Button size="sm" onClick={() => setShowAddGuest(true)} icon={<Plus size={14} />}>Add Guest</Button>
                 </div>
               </div>
-              {/* Bulk action bar */}
               {selectedGuests.size > 0 && (
                 <div className="flex items-center gap-3 p-3 bg-indigo-600/10 border border-indigo-500/20 rounded-xl">
-                  <span className="text-sm font-medium text-indigo-300">{selectedGuests.size} selected</span>
+                  <span className="text-sm font-semibold text-indigo-300">{selectedGuests.size} selected</span>
                   <div className="flex gap-2 ml-auto">
-                    <Button size="sm" variant="secondary" loading={bulkLoading} onClick={() => bulkAction("CONFIRMED")} icon={<CheckCircle2 size={13} />}>
-                      Confirm
-                    </Button>
-                    <Button size="sm" variant="outline" loading={bulkLoading} onClick={() => bulkAction("DECLINED")} icon={<XCircle size={13} />}>
-                      Decline
-                    </Button>
-                    <Button size="sm" variant="danger" loading={bulkLoading} onClick={() => bulkAction("delete")} icon={<Trash2 size={13} />}>
-                      Remove
-                    </Button>
-                    <button type="button" aria-label="Clear selection" onClick={() => setSelectedGuests(new Set())} className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-700 transition-colors">
-                      <X size={14} />
-                    </button>
+                    <Button size="sm" variant="secondary" loading={bulkLoading} onClick={() => bulkAction("CONFIRMED")} icon={<CheckCircle2 size={13} />}>Confirm</Button>
+                    <Button size="sm" variant="outline"   loading={bulkLoading} onClick={() => bulkAction("DECLINED")} icon={<XCircle size={13} />}>Decline</Button>
+                    <Button size="sm" variant="danger"    loading={bulkLoading} onClick={() => bulkAction("delete")}   icon={<Trash2 size={13} />}>Remove</Button>
+                    <button type="button" aria-label="Clear selection" onClick={() => setSelectedGuests(new Set())}
+                      className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-700 transition-colors"><X size={14} /></button>
                   </div>
                 </div>
               )}
@@ -607,27 +587,26 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
             {filteredGuests.length === 0 ? (
               <div className="py-16 text-center">
-                <Users size={32} className="text-slate-700 mx-auto mb-3" />
-                <p className="text-slate-400">No guests yet</p>
-                <p className="text-slate-600 text-sm mt-1">Add guests or share the invite link</p>
+                <div className="w-14 h-14 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center mx-auto mb-4">
+                  <Users size={24} className="text-indigo-400" />
+                </div>
+                <p className="text-white font-semibold mb-1">No guests yet</p>
+                <p className="text-slate-500 text-sm">Add guests or share the invite link</p>
               </div>
             ) : (
               <table className="w-full data-table">
                 <thead>
                   <tr>
                     <th className="w-10">
-                      <input
-                        type="checkbox"
-                        aria-label="Select all guests"
+                      <input type="checkbox" aria-label="Select all guests"
                         checked={selectedGuests.size === filteredGuests.length && filteredGuests.length > 0}
                         onChange={() => toggleSelectAll(filteredGuests)}
-                        className="w-4 h-4 rounded accent-indigo-500 cursor-pointer"
-                      />
+                        className="w-4 h-4 rounded accent-indigo-500 cursor-pointer" />
                     </th>
                     <th className="text-left">Guest</th>
-                    <th className="text-left">Contact</th>
+                    <th className="text-left hidden sm:table-cell">Contact</th>
                     <th className="text-left">Status</th>
-                    <th className="text-left">Check-In</th>
+                    <th className="text-left hidden md:table-cell">Check-In</th>
                     <th className="text-right">Actions</th>
                   </tr>
                 </thead>
@@ -635,77 +614,46 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   {filteredGuests.map(guest => (
                     <tr key={guest.id} className={`group ${selectedGuests.has(guest.id) ? "bg-indigo-600/5" : ""}`}>
                       <td>
-                        <input
-                          type="checkbox"
-                          aria-label={`Select ${guest.name}`}
-                          checked={selectedGuests.has(guest.id)}
-                          onChange={() => toggleSelect(guest.id)}
-                          className="w-4 h-4 rounded accent-indigo-500 cursor-pointer"
-                        />
+                        <input type="checkbox" aria-label={`Select ${guest.name}`}
+                          checked={selectedGuests.has(guest.id)} onChange={() => toggleSelect(guest.id)}
+                          className="w-4 h-4 rounded accent-indigo-500 cursor-pointer" />
                       </td>
                       <td>
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${selectedGuests.has(guest.id) ? "bg-indigo-600/40 text-indigo-300" : "bg-indigo-600/20 text-indigo-400"}`}>
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black shrink-0
+                            ${selectedGuests.has(guest.id) ? "bg-indigo-600/40 text-indigo-300" : "bg-indigo-600/15 text-indigo-400"}`}>
                             {guest.name.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-white">{guest.name}</p>
-                            {guest.plusOne && <p className="text-xs text-slate-500">+1 guest</p>}
-                            {guest.tier && (
-                              <span className="inline-block text-xs px-1.5 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/20 mt-0.5">
-                                {guest.tier.name}
-                              </span>
-                            )}
+                            <p className="text-sm font-bold text-white tracking-tight">{guest.name}</p>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {guest.plusOne && <span className="text-[10px] text-slate-500">+1</span>}
+                              {guest.tier && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/20">{guest.tier.name}</span>}
+                            </div>
                           </div>
                         </div>
                       </td>
-                      <td>
+                      <td className="hidden sm:table-cell">
                         <div className="text-sm">
-                          {guest.email && <p className="text-slate-300">{guest.email}</p>}
+                          {guest.email && <p className="text-slate-300 text-xs">{guest.email}</p>}
                           {guest.phone && <p className="text-slate-500 text-xs">{guest.phone}</p>}
                           {!guest.email && !guest.phone && <p className="text-slate-600">—</p>}
                         </div>
                       </td>
-                      <td>
-                        <StatusBadge status={guest.status} />
-                      </td>
-                      <td>
-                        {guest.checkedIn ? (
-                          <span className="inline-flex items-center gap-1 text-xs text-emerald-400">
-                            <UserCheck size={13} /> Checked in
-                          </span>
-                        ) : (
-                          <span className="text-xs text-slate-600">Not checked in</span>
-                        )}
+                      <td><StatusBadge status={guest.status} /></td>
+                      <td className="hidden md:table-cell">
+                        {guest.checkedIn
+                          ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-400"><UserCheck size={12} /> Checked in</span>
+                          : <span className="text-xs text-slate-600">—</span>}
                       </td>
                       <td>
                         <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {guest.status !== "CONFIRMED" && (
-                            <button type="button" onClick={() => updateGuestStatus(guest.id, "CONFIRMED")} className="p-1.5 rounded text-emerald-400 hover:bg-emerald-400/10 transition-colors" title="Confirm">
-                              <CheckCircle2 size={15} />
-                            </button>
-                          )}
-                          {guest.status !== "DECLINED" && (
-                            <button type="button" onClick={() => updateGuestStatus(guest.id, "DECLINED")} className="p-1.5 rounded text-red-400 hover:bg-red-400/10 transition-colors" title="Decline">
-                              <XCircle size={15} />
-                            </button>
-                          )}
-                          <button type="button" onClick={() => loadQR(guest)} className="p-1.5 rounded text-indigo-400 hover:bg-indigo-400/10 transition-colors" title="QR Ticket">
-                            <QrCode size={15} />
-                          </button>
-                          {guest.email && (
-                            <a href={`mailto:${guest.email}`} className="p-1.5 rounded text-slate-400 hover:bg-slate-400/10 transition-colors" title="Email guest">
-                              <Mail size={15} />
-                            </a>
-                          )}
-                          {guest.phone && (
-                            <a href={`https://wa.me/${guest.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded text-green-400 hover:bg-green-400/10 transition-colors" title="WhatsApp">
-                              <MessageCircle size={15} />
-                            </a>
-                          )}
-                          <button type="button" onClick={() => removeGuest(guest.id)} className="p-1.5 rounded text-red-400 hover:bg-red-400/10 transition-colors" title="Remove">
-                            <Trash2 size={15} />
-                          </button>
+                          {guest.status !== "CONFIRMED" && <button type="button" onClick={() => updateGuestStatus(guest.id, "CONFIRMED")} className="p-1.5 rounded-lg text-emerald-400 hover:bg-emerald-400/10 transition-colors" title="Confirm"><CheckCircle2 size={14} /></button>}
+                          {guest.status !== "DECLINED"  && <button type="button" onClick={() => updateGuestStatus(guest.id, "DECLINED")}  className="p-1.5 rounded-lg text-red-400 hover:bg-red-400/10 transition-colors" title="Decline"><XCircle size={14} /></button>}
+                          <button type="button" onClick={() => loadQR(guest)} className="p-1.5 rounded-lg text-indigo-400 hover:bg-indigo-400/10 transition-colors" title="QR Ticket"><QrCode size={14} /></button>
+                          {guest.email && <a href={`mailto:${guest.email}`} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-400/10 transition-colors" title="Email"><Mail size={14} /></a>}
+                          {guest.phone && <a href={`https://wa.me/${guest.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-green-400 hover:bg-green-400/10 transition-colors" title="WhatsApp"><MessageCircle size={14} /></a>}
+                          <button type="button" onClick={() => removeGuest(guest.id)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-400/10 transition-colors" title="Remove"><Trash2 size={14} /></button>
                         </div>
                       </td>
                     </tr>
@@ -716,73 +664,63 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        {/* Share Tab */}
+        {/* ── Share Tab ────────────────────────────────────────────── */}
         {activeTab === "share" && (
           <div className="grid lg:grid-cols-2 gap-6">
-            {/* Main invite link */}
-            <div className="bg-card border border-border rounded-xl p-6">
-              <h3 className="text-sm font-semibold text-white mb-1">Event Invite Link</h3>
-              <p className="text-xs text-slate-500 mb-4">Share this link with guests to RSVP</p>
-
-              {event.status !== "PUBLISHED" && (
-                <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg mb-4">
-                  <AlertCircle size={15} className="text-amber-400 mt-0.5 shrink-0" />
-                  <p className="text-xs text-amber-300">Publish the event before sharing so guests can RSVP</p>
+            <Card3D intensity="subtle">
+              <div className="bg-card border border-border rounded-xl p-6">
+                <h3 className="text-sm font-black text-white mb-1 tracking-tight">Event Invite Link</h3>
+                <p className="text-xs text-slate-500 mb-4">Share this link with guests to RSVP</p>
+                {event.status !== "PUBLISHED" && (
+                  <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl mb-4">
+                    <AlertCircle size={14} className="text-amber-400 mt-0.5 shrink-0" />
+                    <p className="text-xs text-amber-300">Publish the event first so guests can RSVP</p>
+                  </div>
+                )}
+                <div className="flex gap-2 mb-4">
+                  <div className="flex-1 bg-surface border border-border rounded-xl px-3 py-2.5 text-xs text-slate-400 font-mono truncate">
+                    {typeof window !== "undefined" ? `${window.location.origin}/invite/${event.inviteToken}` : `/invite/${event.inviteToken}`}
+                  </div>
+                  <Button size="sm" onClick={() => copyInviteLink(event.inviteToken)} icon={<Copy size={14} />}>Copy</Button>
                 </div>
-              )}
-
-              <div className="flex gap-2 mb-4">
-                <div className="flex-1 bg-slate-800 border border-border rounded-lg px-3 py-2.5 text-xs text-slate-400 font-mono truncate">
-                  {typeof window !== "undefined" ? `${window.location.origin}/invite/${event.inviteToken}` : `/invite/${event.inviteToken}`}
+                <div className="flex flex-col gap-2">
+                  <Button variant="secondary" onClick={shareWhatsApp} icon={<MessageCircle size={16} />} className="w-full">Share via WhatsApp</Button>
+                  <Link href={`/invite/${event.inviteToken}`} target="_blank" className="w-full">
+                    <Button variant="outline" icon={<ExternalLink size={16} />} className="w-full">Preview Invite Page</Button>
+                  </Link>
                 </div>
-                <Button size="sm" onClick={() => copyInviteLink(event.inviteToken)} icon={<Copy size={14} />}>
-                  Copy
-                </Button>
               </div>
+            </Card3D>
 
-              <div className="flex flex-col gap-2">
-                <Button variant="secondary" onClick={shareWhatsApp} icon={<MessageCircle size={16} />} className="w-full">
-                  Share via WhatsApp
-                </Button>
-                <Link href={`/invite/${event.inviteToken}`} target="_blank" className="w-full">
-                  <Button variant="outline" icon={<ExternalLink size={16} />} className="w-full">
-                    Preview Invite Page
-                  </Button>
-                </Link>
-              </div>
-            </div>
-
-            {/* Custom invite links */}
-            <div className="bg-card border border-border rounded-xl p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-sm font-semibold text-white mb-1">Custom Links</h3>
-                  <p className="text-xs text-slate-500">Trackable links for different channels</p>
+            <Card3D intensity="subtle">
+              <div className="bg-card border border-border rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-sm font-black text-white mb-1 tracking-tight">Custom Links</h3>
+                    <p className="text-xs text-slate-500">Trackable links for different channels</p>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={createInviteLink} icon={<Plus size={14} />}>New</Button>
                 </div>
-                <Button size="sm" variant="outline" onClick={createInviteLink} icon={<Plus size={14} />}>
-                  New Link
-                </Button>
-              </div>
-
-              {(event.inviteLinks || []).length === 0 ? (
-                <div className="text-center py-8">
-                  <Share2 size={24} className="text-slate-700 mx-auto mb-2" />
-                  <p className="text-sm text-slate-500">No custom links yet</p>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  {(event.inviteLinks || []).map(link => (
-                    <div key={link.id} className="flex items-center gap-3 p-3 bg-slate-800/40 rounded-lg">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-slate-400 font-mono truncate">/invite/{link.token.slice(0, 12)}...</p>
-                        <p className="text-xs text-slate-600 mt-0.5">{link.usageCount} uses</p>
+                {(event.inviteLinks || []).length === 0 ? (
+                  <div className="text-center py-8">
+                    <Share2 size={24} className="text-slate-700 mx-auto mb-2" />
+                    <p className="text-sm text-slate-500">No custom links yet</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {(event.inviteLinks || []).map(link => (
+                      <div key={link.id} className="flex items-center gap-3 p-3 bg-slate-800/40 border border-border/50 rounded-xl">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-slate-400 font-mono truncate">/invite/{link.token.slice(0, 14)}…</p>
+                          <p className="text-[11px] text-slate-600 mt-0.5">{link.usageCount} uses</p>
+                        </div>
+                        <Button size="sm" variant="ghost" onClick={() => copyInviteLink(link.token)} icon={<Copy size={12} />} />
                       </div>
-                      <Button size="sm" variant="ghost" onClick={() => copyInviteLink(link.token)} icon={<Copy size={12} />} />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Card3D>
           </div>
         )}
       </div>
@@ -874,7 +812,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               onChange={e => setNotifyMessage(e.target.value)}
               placeholder="Add a personal message, any updates, or reminders for your guests..."
               rows={4}
-              className="w-full bg-slate-900 border border-border text-slate-200 placeholder:text-slate-600 rounded-xl p-3 text-sm focus:outline-none focus:border-indigo-500/50 resize-none"
+              className="w-full bg-surface border border-border text-slate-200 placeholder:text-slate-600 rounded-xl p-3 text-sm focus:outline-none focus:border-indigo-500/50 resize-none"
             />
           </div>
           <div className="flex gap-3 pt-1">
@@ -904,7 +842,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               onChange={e => handleCSVChange(e.target.value)}
               placeholder={"Name, Email, Phone\nJane Smith, jane@example.com, +1234567890\nJohn Doe, john@example.com"}
               rows={6}
-              className="w-full bg-slate-900 border border-border text-slate-200 placeholder:text-slate-700 rounded-xl p-3 text-sm font-mono focus:outline-none focus:border-indigo-500/50 resize-none"
+              className="w-full bg-surface border border-border text-slate-200 placeholder:text-slate-700 rounded-xl p-3 text-sm font-mono focus:outline-none focus:border-indigo-500/50 resize-none"
             />
             {csvPreview.length > 0 && (
               <p className="text-xs text-emerald-400 mt-1.5">{csvPreview.length} guest{csvPreview.length !== 1 ? "s" : ""} detected</p>

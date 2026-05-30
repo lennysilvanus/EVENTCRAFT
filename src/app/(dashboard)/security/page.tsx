@@ -56,7 +56,7 @@ export default function SecurityDashboard() {
             <Shield size={20} className="text-red-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Security Operations</h1>
+            <h1 className="text-2xl font-black text-white tracking-tight">Security Operations</h1>
             <p className="text-slate-400 text-sm">System-wide monitoring and control centre</p>
           </div>
         </div>

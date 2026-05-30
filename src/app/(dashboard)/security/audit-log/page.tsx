@@ -42,7 +42,7 @@ export default function AuditLogPage() {
             <FileText size={20} className="text-violet-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Audit Log</h1>
+            <h1 className="text-2xl font-black text-white tracking-tight">Audit Log</h1>
             <p className="text-slate-400 text-sm">Complete record of all admin and security actions</p>
           </div>
         </div>

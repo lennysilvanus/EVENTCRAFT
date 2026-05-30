@@ -64,7 +64,7 @@ export default function MyTicketsPage() {
           <div className="w-14 h-14 rounded-2xl bg-indigo-600/15 border border-indigo-500/20 flex items-center justify-center mx-auto mb-4">
             <Ticket size={24} className="text-indigo-400" />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">My Invitations</h1>
+          <h1 className="text-2xl font-black text-white tracking-tight mb-2">My Invitations</h1>
           <p className="text-slate-400 text-sm">Enter the email you used to RSVP to find all your tickets and invitations.</p>
         </div>
 

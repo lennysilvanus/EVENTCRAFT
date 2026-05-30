@@ -104,7 +104,7 @@ export default function EarningsPage() {
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-white">Earnings</h1>
+            <h1 className="text-2xl font-black text-white tracking-tight">Earnings</h1>
             <p className="text-slate-400 text-sm mt-1">Ticket revenue and payout history</p>
           </div>
           {payments.length > 0 && (

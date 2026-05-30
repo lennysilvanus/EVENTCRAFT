@@ -43,7 +43,7 @@ export default function SecurityPaymentsPage() {
             <CreditCard size={20} className="text-emerald-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Payment Monitor</h1>
+            <h1 className="text-2xl font-black text-white tracking-tight">Payment Monitor</h1>
             <p className="text-slate-400 text-sm">Transaction oversight across all events</p>
           </div>
         </div>

@@ -2,9 +2,11 @@
 
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, Calendar, MapPin, Clock, Tag, Users, Hash, Globe, Lock, Ticket } from "lucide-react";
+import { ArrowLeft, Save, Calendar, MapPin, Clock, Tag, Hash, Globe, Lock, Ticket, RefreshCw, LayoutTemplate, Image as ImageIcon2 } from "lucide-react";
 import TierEditor, { type TierDraft } from "@/components/ui/TierEditor";
 import ImageUpload from "@/components/ui/ImageUpload";
+import MediaGalleryUpload from "@/components/ui/MediaGalleryUpload";
+import VideoUpload from "@/components/ui/VideoUpload";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -22,10 +24,13 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
   const [form, setForm] = useState({
     title: "", description: "", date: "", time: "", endDate: "", endTime: "",
     location: "", address: "", category: "OTHER", maxGuests: "",
-    dressCode: "", notes: "", inviteText: "", isPublic: false, status: "DRAFT",
-    isPaid: false, ticketCurrency: "TZS", coverImage: "",
+    dressCode: "", notes: "", inviteText: "", isPublic: false, isTemplate: false,
+    recurrenceType: "NONE", recurrenceEnd: "",
+    status: "DRAFT", isPaid: false, ticketCurrency: "TZS", coverImage: "",
+    posterImage: "", videoUrl: "",
   });
   const [tiers, setTiers] = useState<TierDraft[]>([]);
+  const [galleryImages, setGalleryImages] = useState<{ id?: string; url: string }[]>([]);
 
   useEffect(() => {
     fetch(`/api/events/${id}`).then(r => r.json()).then(d => {
@@ -41,8 +46,14 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
         location: e.location || "", address: e.address || "",
         category: e.category || "OTHER", maxGuests: e.maxGuests ? String(e.maxGuests) : "",
         dressCode: e.dressCode || "", notes: e.notes || "",
-        inviteText: e.inviteText || "", isPublic: e.isPublic || false, status: e.status || "DRAFT",
+        inviteText: e.inviteText || "", isPublic: e.isPublic || false,
+        isTemplate: e.isTemplate || false,
+        recurrenceType: e.recurrenceType || "NONE",
+        recurrenceEnd: e.recurrenceEnd ? new Date(e.recurrenceEnd).toISOString().slice(0, 10) : "",
+        status: e.status || "DRAFT",
         isPaid: !!(e.tiers?.length > 0),
+        posterImage: e.posterImage || "",
+        videoUrl: e.videoUrl || "",
         ticketCurrency: e.ticketCurrency || "TZS",
         coverImage: e.coverImage || "",
       });
@@ -55,6 +66,9 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
           capacity: t.capacity != null ? String(t.capacity) : "",
           sortOrder: t.sortOrder,
         })));
+      }
+      if (e.media?.length) {
+        setGalleryImages(e.media.map((m: { id: string; url: string }) => ({ id: m.id, url: m.url })));
       }
     }).finally(() => setLoading(false));
   }, [id]);
@@ -75,8 +89,13 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
           endDate: endDateTime, location: form.location, address: form.address,
           category: form.category, maxGuests: form.maxGuests ? parseInt(form.maxGuests) : null,
           dressCode: form.dressCode, notes: form.notes, inviteText: form.inviteText,
-          isPublic: form.isPublic, status: form.status,
+          isPublic: form.isPublic, isTemplate: form.isTemplate,
+          recurrenceType: form.recurrenceType,
+          recurrenceEnd: form.recurrenceType !== "NONE" && form.recurrenceEnd ? new Date(`${form.recurrenceEnd}T23:59`).toISOString() : null,
+          status: form.status,
           coverImage: form.coverImage || null,
+          posterImage: form.posterImage || null,
+          videoUrl: form.videoUrl || null,
           ticketCurrency: form.isPaid ? form.ticketCurrency : undefined,
           tiers: form.isPaid && tiers.length > 0
             ? tiers.filter(t => t.name && t.price).map((t, i) => ({
@@ -117,13 +136,34 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
           <Link href={`/events/${id}`} className="inline-flex items-center gap-2 text-slate-400 hover:text-white text-sm mb-4 transition-colors">
             <ArrowLeft size={15} /> Back to Event
           </Link>
-          <h1 className="text-2xl font-bold text-white">Edit Event</h1>
+          <h1 className="text-2xl font-black text-white tracking-tight">Edit Event</h1>
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-6 flex flex-col gap-5">
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1.5">Cover Image</label>
             <ImageUpload value={form.coverImage} onChange={url => set("coverImage", url)} />
+          </div>
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-300 mb-1.5">
+              <ImageIcon2 size={14} className="text-purple-400" /> Event Poster
+              <span className="text-xs text-slate-500 font-normal">(downloadable by guests)</span>
+            </label>
+            <ImageUpload value={form.posterImage} onChange={url => set("posterImage", url)} />
+          </div>
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-300 mb-1.5">
+              Promo Video
+              <span className="text-xs text-slate-500 font-normal">(upload file or paste YouTube/Vimeo link)</span>
+            </label>
+            <VideoUpload value={form.videoUrl} onChange={url => set("videoUrl", url)} />
+          </div>
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-300 mb-1.5">
+              <ImageIcon2 size={14} className="text-indigo-400" /> Photo Gallery
+              <span className="text-xs text-slate-500 font-normal">(up to 20 images)</span>
+            </label>
+            <MediaGalleryUpload eventId={id} images={galleryImages} onChange={setGalleryImages} />
           </div>
           <Input label="Event Title" value={form.title} onChange={e => set("title", e.target.value)} icon={<Tag size={16} />} />
           <div className="grid grid-cols-2 gap-4">
@@ -209,7 +249,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
               </div>
               <div>
                 <p className="text-sm font-medium text-white">{form.isPublic ? "Public Event" : "Private Event"}</p>
-                <p className="text-xs text-slate-500">{form.isPublic ? "Anyone with the link can RSVP" : "Only invited guests can RSVP"}</p>
+                <p className="text-xs text-slate-500">{form.isPublic ? "Discoverable on /explore" : "Only invited guests can RSVP"}</p>
               </div>
             </div>
             <button
@@ -219,6 +259,81 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
               className={`relative w-12 h-6 rounded-full transition-colors ${form.isPublic ? "bg-emerald-600" : "bg-slate-700"}`}
             >
               <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${form.isPublic ? "translate-x-7" : "translate-x-1"}`} />
+            </button>
+          </div>
+
+          {/* Recurrence */}
+          <div className="border border-border rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between p-4 bg-slate-800/40">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${form.recurrenceType !== "NONE" ? "bg-indigo-600/15 text-indigo-400" : "bg-slate-700/60 text-slate-400"}`}>
+                  <RefreshCw size={18} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-white">Recurring Event</p>
+                  <p className="text-xs text-slate-500">Repeat this event on a schedule</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                aria-label={form.recurrenceType !== "NONE" ? "Disable recurrence" : "Enable recurrence"}
+                onClick={() => set("recurrenceType", form.recurrenceType === "NONE" ? "WEEKLY" : "NONE")}
+                className={`relative w-12 h-6 rounded-full transition-colors ${form.recurrenceType !== "NONE" ? "bg-indigo-600" : "bg-slate-700"}`}
+              >
+                <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${form.recurrenceType !== "NONE" ? "translate-x-7" : "translate-x-1"}`} />
+              </button>
+            </div>
+            {form.recurrenceType !== "NONE" && (
+              <div className="p-4 border-t border-border bg-indigo-500/5 flex flex-col gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1.5">Repeat every</label>
+                  <div className="flex gap-2">
+                    {(["WEEKLY", "MONTHLY", "YEARLY"] as const).map(r => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => set("recurrenceType", r)}
+                        className={`px-4 py-2 rounded-lg text-xs font-medium border transition-all ${
+                          form.recurrenceType === r
+                            ? "bg-indigo-600/20 border-indigo-500/40 text-indigo-300"
+                            : "border-border text-slate-400 hover:border-slate-500 hover:text-white"
+                        }`}
+                      >
+                        {r === "WEEKLY" ? "Week" : r === "MONTHLY" ? "Month" : "Year"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <Input
+                  label="Repeat until (optional)"
+                  type="date"
+                  value={form.recurrenceEnd}
+                  onChange={e => set("recurrenceEnd", e.target.value)}
+                  icon={<Calendar size={16} />}
+                  hint="Leave empty to repeat indefinitely"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Template */}
+          <div className="flex items-center justify-between p-4 bg-slate-800/40 border border-border rounded-xl">
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-lg ${form.isTemplate ? "bg-purple-600/15 text-purple-400" : "bg-slate-700/60 text-slate-400"}`}>
+                <LayoutTemplate size={18} />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-white">Save as Template</p>
+                <p className="text-xs text-slate-500">Reuse this event structure for future events</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              aria-label={form.isTemplate ? "Unmark as template" : "Save as template"}
+              onClick={() => set("isTemplate", !form.isTemplate)}
+              className={`relative w-12 h-6 rounded-full transition-colors ${form.isTemplate ? "bg-purple-600" : "bg-slate-700"}`}
+            >
+              <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${form.isTemplate ? "translate-x-7" : "translate-x-1"}`} />
             </button>
           </div>
 

@@ -98,7 +98,7 @@ export default function PayoutSettingsPage() {
     <DashboardLayout>
       <div className="max-w-2xl mx-auto flex flex-col gap-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Payout Settings</h1>
+          <h1 className="text-2xl font-black text-white tracking-tight">Payout Settings</h1>
           <p className="text-slate-400 text-sm mt-1">Where EventCraft sends your ticket revenue after each payment.</p>
         </div>
 
@@ -194,7 +194,7 @@ export default function PayoutSettingsPage() {
                     aria-label="Mobile network"
                     value={mobileForm.network}
                     onChange={e => setMobileForm(f => ({ ...f, network: e.target.value }))}
-                    className="w-full bg-slate-900 border border-border text-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500/50"
+                    className="w-full bg-surface border border-border text-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500/50"
                   >
                     {NETWORKS.map(n => (
                       <option key={n.value} value={n.value}>{n.label}</option>
@@ -225,7 +225,7 @@ export default function PayoutSettingsPage() {
                       const bank = BANKS.find(b => b.code === e.target.value);
                       setBankForm(f => ({ ...f, bankCode: e.target.value, bankName: bank?.name ?? "" }));
                     }}
-                    className="w-full bg-slate-900 border border-border text-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500/50"
+                    className="w-full bg-surface border border-border text-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500/50"
                   >
                     <option value="">Select a bank</option>
                     {BANKS.map(b => (

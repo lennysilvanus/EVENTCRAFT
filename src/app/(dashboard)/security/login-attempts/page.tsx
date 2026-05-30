@@ -32,7 +32,7 @@ export default function LoginAttemptsPage() {
             <LogIn size={20} className="text-amber-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Login Attempts</h1>
+            <h1 className="text-2xl font-black text-white tracking-tight">Login Attempts</h1>
             <p className="text-slate-400 text-sm">Authentication events and brute-force monitoring</p>
           </div>
         </div>

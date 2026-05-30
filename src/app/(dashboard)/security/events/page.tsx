@@ -56,7 +56,7 @@ export default function SecurityEventsPage() {
             <Calendar size={20} className="text-violet-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Event Moderation</h1>
+            <h1 className="text-2xl font-black text-white tracking-tight">Event Moderation</h1>
             <p className="text-slate-400 text-sm">Review and take action on published events</p>
           </div>
           <button onClick={load} className="ml-auto text-slate-400 hover:text-white p-2 transition-colors">
