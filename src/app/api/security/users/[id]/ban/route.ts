@@ -10,7 +10,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (isGuardError(guard)) return guard;
 
   const ip = getClientIp(request);
-  if (isRateLimited(`security-action:${guard.user.userId}`, 30, 60_000)) {
+  if (await isRateLimited(`security-action:${guard.user.userId}`, 30, 60_000)) {
     return NextResponse.json({ error: "Too many actions. Slow down." }, { status: 429 });
   }
 
