@@ -36,6 +36,16 @@ describe("getEffectivePlan", () => {
     expect(getEffectivePlan("ENTERPRISE", future)).toBe("FREE");
     expect(getEffectivePlan("", future)).toBe("FREE");
   });
+
+  it("returns BUSINESS for ADMIN role regardless of plan or expiry", () => {
+    expect(getEffectivePlan("FREE",     null,   "ADMIN")).toBe("BUSINESS");
+    expect(getEffectivePlan("FREE",     past,   "ADMIN")).toBe("BUSINESS");
+    expect(getEffectivePlan("PRO",      past,   "ADMIN")).toBe("BUSINESS");
+  });
+
+  it("returns BUSINESS for SECURITY_ADMIN role", () => {
+    expect(getEffectivePlan("FREE", null, "SECURITY_ADMIN")).toBe("BUSINESS");
+  });
 });
 
 describe("getPlanLimits", () => {
@@ -68,5 +78,24 @@ describe("getPlanLimits", () => {
   it("returns FREE limits when no expiry is provided for paid plan", () => {
     const limits = getPlanLimits("PRO");
     expect(limits).toEqual(PLAN_LIMITS.FREE);
+  });
+
+  it("returns BUSINESS limits for ADMIN role ignoring plan and expiry", () => {
+    const limits = getPlanLimits("FREE", null, "ADMIN");
+    expect(limits).toEqual(PLAN_LIMITS.BUSINESS);
+  });
+});
+
+describe("aiGenerations limits", () => {
+  it("FREE plan allows 1 AI generation per month", () => {
+    expect(PLAN_LIMITS.FREE.aiGenerations).toBe(1);
+  });
+
+  it("PRO plan allows 3 AI generations per month", () => {
+    expect(PLAN_LIMITS.PRO.aiGenerations).toBe(3);
+  });
+
+  it("BUSINESS plan allows unlimited AI generations", () => {
+    expect(PLAN_LIMITS.BUSINESS.aiGenerations).toBe(Infinity);
   });
 });

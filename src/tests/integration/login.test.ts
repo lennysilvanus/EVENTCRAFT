@@ -15,7 +15,7 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 vi.mock("@/lib/rate-limit", () => ({
-  isRateLimited: vi.fn().mockReturnValue(false),
+  isRateLimited: vi.fn().mockResolvedValue(false),
   getClientIp: vi.fn().mockReturnValue("1.2.3.4"),
 }));
 
@@ -37,7 +37,7 @@ function makeRequest(body: object) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(isRateLimited).mockReturnValue(false);
+  vi.mocked(isRateLimited).mockResolvedValue(false);
 });
 
 describe("POST /api/auth/login", () => {
@@ -92,7 +92,7 @@ describe("POST /api/auth/login", () => {
   });
 
   it("returns 429 when rate limited", async () => {
-    vi.mocked(isRateLimited).mockReturnValue(true);
+    vi.mocked(isRateLimited).mockResolvedValue(true);
     const res = await POST(makeRequest({ email: "user@example.com", password: "password123" }));
     expect(res.status).toBe(429);
   });

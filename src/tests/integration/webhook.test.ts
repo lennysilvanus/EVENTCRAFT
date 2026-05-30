@@ -3,12 +3,16 @@ import { POST } from "@/app/api/snippe/webhook/route";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    processedWebhookEvent: { create: vi.fn() },
+    processedWebhookEvent: {
+      create:     vi.fn(),
+      update:     vi.fn().mockResolvedValue({}),
+      findUnique: vi.fn().mockResolvedValue(null),
+    },
     user: { update: vi.fn() },
     payment: {
-      findFirst: vi.fn(),
+      findFirst:  vi.fn(),
       updateMany: vi.fn(),
-      update: vi.fn(),
+      update:     vi.fn(),
     },
     guest: { update: vi.fn() },
     $transaction: vi.fn(),
@@ -31,12 +35,16 @@ import { prisma } from "@/lib/prisma";
 import { verifyWebhookSignature } from "@/lib/snippe";
 
 const mockPrisma = prisma as unknown as {
-  processedWebhookEvent: { create: ReturnType<typeof vi.fn> };
+  processedWebhookEvent: {
+    create:     ReturnType<typeof vi.fn>;
+    update:     ReturnType<typeof vi.fn>;
+    findUnique: ReturnType<typeof vi.fn>;
+  };
   user: { update: ReturnType<typeof vi.fn> };
   payment: {
-    findFirst: ReturnType<typeof vi.fn>;
+    findFirst:  ReturnType<typeof vi.fn>;
     updateMany: ReturnType<typeof vi.fn>;
-    update: ReturnType<typeof vi.fn>;
+    update:     ReturnType<typeof vi.fn>;
   };
   guest: { update: ReturnType<typeof vi.fn> };
   $transaction: ReturnType<typeof vi.fn>;
@@ -76,6 +84,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(verifyWebhookSignature).mockReturnValue(true);
   mockPrisma.processedWebhookEvent.create.mockResolvedValue({});
+  mockPrisma.processedWebhookEvent.update.mockResolvedValue({});
+  mockPrisma.processedWebhookEvent.findUnique.mockResolvedValue(null);
   mockPrisma.payment.findFirst.mockResolvedValue(mockPayment);
   mockPrisma.$transaction.mockResolvedValue([]);
   mockPrisma.payment.update.mockResolvedValue({});
@@ -161,5 +171,47 @@ describe("POST /api/snippe/webhook", () => {
     };
     await POST(makeWebhookRequest(subPayload));
     expect(mockPrisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it("activates annual plan and sets planInterval to ANNUAL", async () => {
+    mockPrisma.user.update.mockResolvedValue({});
+    const annualPayload = {
+      event: "payment.completed",
+      data: {
+        transaction_id: "txn_annual_001",
+        status: "success",
+        amount: 400000,
+        reference: "sub_clh5abc999_PRO_ANNUAL_1234567890",
+      },
+    };
+    const res = await POST(makeWebhookRequest(annualPayload));
+    expect(res.status).toBe(200);
+    expect(mockPrisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "clh5abc999" },
+        data:  expect.objectContaining({ plan: "PRO", planInterval: "ANNUAL" }),
+      })
+    );
+  });
+
+  it("grants an event credit for credit_ reference", async () => {
+    mockPrisma.user.update.mockResolvedValue({});
+    const creditPayload = {
+      event: "payment.completed",
+      data: {
+        transaction_id: "txn_credit_001",
+        status: "success",
+        amount: 10000,
+        reference: "credit_clh5abc777_1234567890",
+      },
+    };
+    const res = await POST(makeWebhookRequest(creditPayload));
+    expect(res.status).toBe(200);
+    expect(mockPrisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "clh5abc777" },
+        data:  { eventCredits: { increment: 1 } },
+      })
+    );
   });
 });
