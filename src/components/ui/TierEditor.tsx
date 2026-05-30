@@ -125,7 +125,7 @@ export default function TierEditor({ tiers, currency, category, onChange }: Prop
                   placeholder="e.g. VIP"
                   value={tier.name}
                   onChange={e => updateTier(idx, "name", e.target.value)}
-                  className="w-full bg-slate-900 border border-border text-slate-200 placeholder:text-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500/50"
+                  className="w-full bg-surface border border-border text-slate-200 placeholder:text-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500/50"
                 />
               </div>
               <div className="col-span-2 sm:col-span-1">
@@ -138,7 +138,7 @@ export default function TierEditor({ tiers, currency, category, onChange }: Prop
                   min="0"
                   value={tier.price}
                   onChange={e => updateTier(idx, "price", e.target.value)}
-                  className="w-full bg-slate-900 border border-border text-slate-200 placeholder:text-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500/50"
+                  className="w-full bg-surface border border-border text-slate-200 placeholder:text-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500/50"
                 />
               </div>
               <div className="col-span-2">
@@ -148,7 +148,7 @@ export default function TierEditor({ tiers, currency, category, onChange }: Prop
                   placeholder="e.g. Reserved seating + welcome drink"
                   value={tier.description}
                   onChange={e => updateTier(idx, "description", e.target.value)}
-                  className="w-full bg-slate-900 border border-border text-slate-200 placeholder:text-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500/50"
+                  className="w-full bg-surface border border-border text-slate-200 placeholder:text-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500/50"
                 />
               </div>
               <div className="col-span-2 sm:col-span-1">
@@ -159,7 +159,7 @@ export default function TierEditor({ tiers, currency, category, onChange }: Prop
                   min="1"
                   value={tier.capacity}
                   onChange={e => updateTier(idx, "capacity", e.target.value)}
-                  className="w-full bg-slate-900 border border-border text-slate-200 placeholder:text-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500/50"
+                  className="w-full bg-surface border border-border text-slate-200 placeholder:text-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500/50"
                 />
               </div>
             </div>

@@ -16,6 +16,7 @@ import {
   Sparkles,
   Users,
   Zap,
+  Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
@@ -52,6 +53,7 @@ export default function Navbar() {
     { href: "/events", label: "Events", icon: <Calendar size={16} /> },
     { href: "/guests", label: "Guests", icon: <Users size={16} /> },
     { href: "/checkin", label: "Check-In", icon: <QrCode size={16} /> },
+    { href: "/explore", label: "Explore", icon: <Globe size={16} /> },
   ];
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");

@@ -26,7 +26,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
             ref={ref}
             id={inputId}
             className={cn(
-              "w-full appearance-none bg-[#0f1629] border border-[#1e2d45] text-slate-100 rounded-lg px-4 py-2.5 pr-10 text-sm transition-all duration-150 cursor-pointer",
+              "w-full appearance-none bg-surface border border-border text-slate-100 rounded-lg px-4 py-2.5 pr-10 text-sm transition-all duration-150 cursor-pointer",
               "focus:outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10",
               error && "border-red-500/50",
               className
@@ -34,7 +34,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
             {...props}
           >
             {options.map((opt) => (
-              <option key={opt.value} value={opt.value} className="bg-[#0f1629]">
+              <option key={opt.value} value={opt.value} className="bg-surface">
                 {opt.label}
               </option>
             ))}
