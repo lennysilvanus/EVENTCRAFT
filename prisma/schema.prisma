@@ -16,8 +16,12 @@ model User {
   role             String    @default("USER")       // USER | ADMIN | SECURITY_ADMIN
   status           String    @default("ACTIVE")     // ACTIVE | SUSPENDED | BANNED
   plan             String    @default("FREE")       // FREE | PRO | BUSINESS
-  planExpiresAt    DateTime?
-  lastLoginAt      DateTime?
+  planInterval        String    @default("MONTHLY")    // MONTHLY | ANNUAL
+  planExpiresAt       DateTime?
+  eventCredits        Int       @default(0)            // pay-per-event credits
+  aiGenerationsUsed    Int       @default(0)            // AI invite generations used in current window
+  aiGenerationsResetAt DateTime?                       // when the current window expires; null = no window yet
+  lastLoginAt         DateTime?
   lastLoginIp      String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
@@ -32,6 +36,15 @@ model User {
   events           Event[]
   eventMemberships EventMember[]
   payoutMethods    HostPayoutMethod[]
+  consentRecords   ConsentRecord[]
+}
+
+model RateLimit {
+  key     String   @id
+  count   Int      @default(1)
+  resetAt DateTime
+
+  @@index([resetAt])
 }
 
 model LoginAttempt {
@@ -94,12 +107,25 @@ model Event {
   inviteToken   String    @unique @default(cuid())
   dressCode     String?
   notes         String?
-  isPublic      Boolean   @default(false)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  isPublic         Boolean   @default(false)
+  isTemplate       Boolean   @default(false)
+  recurrenceType   String    @default("NONE")  // NONE | WEEKLY | MONTHLY | YEARLY
+  recurrenceEnd    DateTime?
+  parentEventId    String?
+  videoUrl         String?   // YouTube or Vimeo promo video URL
+  posterImage      String?   // downloadable high-res event poster
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   hostId        String
   host          User      @relation(fields: [hostId], references: [id], onDelete: Cascade)
+
+  @@index([hostId])
+  @@index([status])
+  @@index([date])
+  @@index([isTemplate])
+  parentEvent   Event?    @relation("EventRecurrence", fields: [parentEventId], references: [id], onDelete: SetNull)
+  recurrences   Event[]   @relation("EventRecurrence")
 
   guests        Guest[]
   inviteLinks   InviteLink[]
@@ -107,6 +133,20 @@ model Event {
   teamMembers   EventMember[]
   tables        Table[]
   tiers         TicketTier[]
+  media         EventMedia[]
+}
+
+model EventMedia {
+  id        String   @id @default(cuid())
+  url       String
+  caption   String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
 }
 
 model Guest {
@@ -134,6 +174,10 @@ model Guest {
   tier        TicketTier? @relation(fields: [tierId], references: [id])
   payment     Payment?
   table       Table?     @relation(fields: [tableId], references: [id])
+
+  @@index([eventId])
+  @@index([status])
+  @@index([email])
 }
 
 model Payment {
@@ -153,6 +197,10 @@ model Payment {
   guest       Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
   eventId     String
   event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  payoutLogs  PayoutLog[]
+
+  @@index([status, payoutStatus])
+  @@index([eventId])
 }
 
 model HostPayoutMethod {
@@ -170,6 +218,8 @@ model HostPayoutMethod {
 
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model EventMember {
@@ -215,7 +265,41 @@ model TicketTier {
 model ProcessedWebhookEvent {
   id            String   @id @default(cuid())
   transactionId String   @unique
+  status        String   @default("DONE")   // PROCESSING | DONE | FAILED
+  errorMessage  String?
   processedAt   DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model PayoutLog {
+  id            String   @id @default(cuid())
+  paymentId     String
+  payment       Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  amount        Float
+  phone         String?
+  network       String?
+  bankCode      String?
+  accountNumber String?
+  payoutId      String?
+  status        String                       // SENT | FAILED
+  errorMessage  String?
+  rawResponse   String?                      // JSON of provider response for dispute resolution
+  createdAt     DateTime @default(now())
+
+  @@index([paymentId])
+}
+
+model ConsentRecord {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String                           // PRIVACY_POLICY | TERMS | AI_PROCESSING
+  version   String   @default("1.0")
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model InviteLink {
