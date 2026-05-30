@@ -12,4 +12,6 @@ function createPrismaClient() {
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+// Always set the global so serverless cold starts reuse the same client
+// (avoids a new DB connection per invocation in Node.js serverless runtimes)
+globalForPrisma.prisma = prisma;

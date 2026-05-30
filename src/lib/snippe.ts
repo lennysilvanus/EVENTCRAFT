@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { PLATFORM_FEE_RATE, NETWORKS, BANKS } from "./snippe-constants";
 export { PLATFORM_FEE_RATE, NETWORKS, BANKS };
 
@@ -119,7 +120,6 @@ export function verifyWebhookSignature(payload: string, signature: string): bool
     console.error("[Security] SNIPPE_WEBHOOK_SECRET is not set — rejecting webhook");
     return false; // fail closed: never accept unverified webhooks
   }
-  const crypto = require("crypto");
   const expected = crypto.createHmac("sha256", secret).update(payload).digest("hex");
   // Timing-safe comparison prevents timing-oracle attacks
   try {

@@ -4,12 +4,33 @@ import { cookies } from "next/headers";
 import { prisma } from "./prisma";
 import { getEffectivePlan } from "./plan-limits";
 import { isUserBlocked } from "./session";
-import { randomBytes } from "crypto";
+import { randomBytes, createHash } from "crypto";
 
-const JWT_SECRET = process.env.JWT_SECRET || (() => {
-  if (process.env.NODE_ENV === "production") throw new Error("JWT_SECRET must be set in production");
-  return "dev-only-secret-not-for-production";
-})();
+/**
+ * Generate a cryptographically random token and its SHA-256 hash.
+ * Store the hash in the DB; send the raw token in the URL.
+ * This way a DB dump doesn't yield usable reset/verify links (H-6).
+ */
+export function generateSecureToken(): { raw: string; hashed: string } {
+  const raw    = randomBytes(32).toString("hex");
+  const hashed = createHash("sha256").update(raw).digest("hex");
+  return { raw, hashed };
+}
+
+/** Hash an inbound token from a URL parameter for DB lookup. */
+export function hashToken(raw: string): string {
+  return createHash("sha256").update(raw).digest("hex");
+}
+
+// JWT_SECRET is required in every environment.  A missing secret would let
+// tokens signed with the default be accepted on staging/CI, so we fail hard.
+if (!process.env.JWT_SECRET) {
+  throw new Error(
+    "JWT_SECRET environment variable is not set. " +
+    "Set it to a random 256-bit value before starting the server."
+  );
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 
 export interface JWTPayload {
   userId: string;
@@ -61,7 +82,7 @@ export async function getCurrentUser() {
       select: { id: true, email: true, name: true, role: true, phone: true, avatar: true, createdAt: true, plan: true, planExpiresAt: true },
     });
     if (!user) return null;
-    return { ...user, plan: getEffectivePlan(user.plan, user.planExpiresAt) };
+    return { ...user, plan: getEffectivePlan(user.plan, user.planExpiresAt, user.role) };
   } catch {
     return null;
   }

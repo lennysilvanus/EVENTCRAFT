@@ -1,22 +1,52 @@
 import { Resend } from "resend";
 import { format } from "date-fns";
+import nodemailer from "nodemailer";
 
 const resend = process.env.RESEND_API_KEY && !process.env.RESEND_API_KEY.includes("your_resend")
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
 
+// SMTP fallback: used when Resend is unavailable or fails.
+// Configure via SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS env vars.
+const smtpTransport = process.env.SMTP_HOST
+  ? nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT ?? "587", 10),
+      secure: parseInt(process.env.SMTP_PORT ?? "587", 10) === 465,
+      auth: process.env.SMTP_USER
+        ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+        : undefined,
+    })
+  : null;
+
 const FROM = process.env.EMAIL_FROM || "EventCraft <onboarding@resend.dev>";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
+async function sendViaSMTP(to: string, subject: string, html: string): Promise<void> {
+  if (!smtpTransport) return;
+  await smtpTransport.sendMail({ from: FROM, to, subject, html });
+}
+
 async function send(to: string, subject: string, html: string) {
-  if (!resend) {
-    console.log(`[Email skipped — no RESEND_API_KEY] To: ${to} | Subject: ${subject}`);
+  if (!resend && !smtpTransport) {
+    console.log(`[Email skipped — no provider configured] To: ${to} | Subject: ${subject}`);
     return;
   }
+
+  if (resend) {
+    try {
+      await resend.emails.send({ from: FROM, to, subject, html });
+      return;
+    } catch (err) {
+      console.error("[Email] Resend failed — attempting SMTP fallback:", (err as Error).message);
+    }
+  }
+
+  // SMTP fallback
   try {
-    await resend.emails.send({ from: FROM, to, subject, html });
+    await sendViaSMTP(to, subject, html);
   } catch (err) {
-    console.error("[Email send error]", err);
+    console.error("[Email] SMTP fallback also failed:", err);
   }
 }
 
@@ -238,6 +268,121 @@ export async function sendEmailVerification(p: { to: string; name: string; verif
     <p style="color:#64748b;font-size:12px;text-align:center;">This link expires in 24 hours. If you didn't create an account, you can safely ignore this email.</p>
   `;
   await send(p.to, "Verify your EventCraft email address", base(content, "Confirm your email to get started"));
+}
+
+export async function sendEventReminder(p: {
+  to: string;
+  guestName: string;
+  eventTitle: string;
+  eventDate: Date;
+  eventLocation: string;
+  inviteToken: string;
+  qrToken?: string | null;
+  window: "7d" | "1d" | "2h";
+}) {
+  const dateStr = format(p.eventDate, "EEEE, MMMM d, yyyy");
+  const timeStr = format(p.eventDate, "h:mm a");
+  const ticketUrl = p.qrToken ? `${APP_URL}/ticket/${p.qrToken}` : `${APP_URL}/invite/${p.inviteToken}`;
+
+  const windowLabel = p.window === "7d" ? "1 week" : p.window === "1d" ? "tomorrow" : "in 2 hours";
+  const emoji = p.window === "7d" ? "📅" : p.window === "1d" ? "⏰" : "🚀";
+
+  const content = `
+    <div style="text-align:center;margin-bottom:28px;">
+      <div style="font-size:44px;margin-bottom:12px;">${emoji}</div>
+      <p style="color:#6366f1;font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;margin:0 0 8px;">Event Reminder</p>
+      <h1 style="color:#1e293b;font-size:22px;font-weight:700;margin:0 0 8px;">${p.eventTitle}</h1>
+      <p style="color:#64748b;font-size:15px;margin:0;">Hi ${p.guestName}! Your event is coming up <strong>${windowLabel}</strong>.</p>
+    </div>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8fafc;border-radius:10px;padding:4px 16px;margin-bottom:24px;">
+      ${detailRow("📅", "Date", dateStr)}
+      ${detailRow("⏰", "Time", timeStr)}
+      ${detailRow("📍", "Venue", p.eventLocation)}
+    </table>
+    <div style="text-align:center;">
+      ${btn(ticketUrl, p.qrToken ? "View My Ticket" : "View Event Details", "#4f46e5")}
+    </div>
+  `;
+
+  const subjects: Record<string, string> = {
+    "7d": `1 week until ${p.eventTitle} 📅`,
+    "1d": `${p.eventTitle} is tomorrow! ⏰`,
+    "2h": `${p.eventTitle} starts in 2 hours! 🚀`,
+  };
+
+  await send(p.to, subjects[p.window], base(content, `Your event is ${windowLabel}`));
+}
+
+export async function sendDraftNudge(p: {
+  to: string;
+  hostName: string;
+  events: { id: string; title: string }[];
+}) {
+  const eventList = p.events
+    .map(e => `<li style="padding:4px 0;"><a href="${APP_URL}/events/${e.id}" style="color:#6366f1;text-decoration:none;">${e.title}</a></li>`)
+    .join("");
+  const count = p.events.length;
+
+  const content = `
+    <div style="text-align:center;margin-bottom:28px;">
+      <div style="font-size:40px;margin-bottom:12px;">📝</div>
+      <h1 style="color:#1e293b;font-size:22px;font-weight:700;margin:0 0 8px;">
+        ${count > 1 ? `${count} events are` : "An event is"} still in draft
+      </h1>
+      <p style="color:#64748b;font-size:14px;margin:0;">Hi ${p.hostName}, guests can't RSVP until you publish.</p>
+    </div>
+    <ul style="color:#1e293b;font-size:14px;margin:0 0 24px;padding-left:20px;line-height:1.8;">
+      ${eventList}
+    </ul>
+    <div style="background:#fefce8;border:1px solid #fde68a;border-radius:10px;padding:14px 18px;margin-bottom:24px;">
+      <p style="color:#92400e;font-size:13px;margin:0;">Ready to go? Hit Publish on each event and your invite link will start working immediately.</p>
+    </div>
+    <div style="text-align:center;">
+      ${btn(`${APP_URL}/events`, "Review My Events", "#4f46e5")}
+    </div>
+    <p style="color:#94a3b8;font-size:12px;text-align:center;margin-top:16px;">No action needed if you're still preparing — we just wanted to remind you.</p>
+  `;
+
+  await send(
+    p.to,
+    count > 1 ? `You have ${count} unpublished events on EventCraft` : `"${p.events[0].title}" is still a draft`,
+    base(content)
+  );
+}
+
+export async function sendRecurringEventCreated(p: {
+  to: string;
+  hostName: string;
+  seriesTitle: string;
+  newEventId: string;
+  newEventDate: Date;
+}) {
+  const eventUrl = `${APP_URL}/events/${p.newEventId}`;
+  const dateStr = format(p.newEventDate, "EEEE, MMMM d, yyyy");
+
+  const content = `
+    <div style="text-align:center;margin-bottom:28px;">
+      <div style="font-size:40px;margin-bottom:12px;">🔁</div>
+      <h1 style="color:#1e293b;font-size:22px;font-weight:700;margin:0 0 8px;">Next occurrence ready</h1>
+      <p style="color:#64748b;font-size:14px;margin:0;">Hi ${p.hostName}, we've auto-created the next occurrence of <strong>${p.seriesTitle}</strong>.</p>
+    </div>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8fafc;border-radius:10px;padding:4px 16px;margin-bottom:24px;">
+      ${detailRow("📅", "Scheduled for", dateStr)}
+      ${detailRow("📋", "Status", "Draft — not yet published")}
+    </table>
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 18px;margin-bottom:24px;">
+      <p style="color:#166534;font-size:13px;margin:0;">Review the event details, make any updates, then publish when you're ready to accept RSVPs.</p>
+    </div>
+    <div style="text-align:center;">
+      ${btn(eventUrl, "Review & Publish", "#4f46e5")}
+    </div>
+  `;
+
+  await send(
+    p.to,
+    `Next "${p.seriesTitle}" is ready to review 🔁`,
+    base(content, `Your recurring event has been auto-scheduled for ${dateStr}`)
+  );
 }
 
 export async function sendBulkGuestReminder(p: {

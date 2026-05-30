@@ -1,3 +1,11 @@
+// Per-plan platform fee rates — applied to ticket sales
+export const PLATFORM_FEE_RATES: Record<string, number> = {
+  FREE:     0.04, // 4%
+  PRO:      0.03, // 3%
+  BUSINESS: 0.02, // 2%
+};
+
+// Legacy single-rate export kept for any callers not yet plan-aware
 export const PLATFORM_FEE_RATE = 0.04;
 
 export const NETWORKS = [

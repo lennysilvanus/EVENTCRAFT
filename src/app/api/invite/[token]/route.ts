@@ -9,6 +9,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
       host: { select: { name: true, email: true } },
       _count: { select: { guests: true } },
       tiers: { orderBy: { sortOrder: "asc" as const } },
+      media: { orderBy: { sortOrder: "asc" as const } },
     };
 
     const rawEvent = await prisma.event.findFirst({
