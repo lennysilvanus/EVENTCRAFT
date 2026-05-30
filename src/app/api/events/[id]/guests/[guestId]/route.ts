@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUserFromCookies } from "@/lib/auth";
 import { promoteFromWaitlist } from "@/lib/waitlist";
+import { logAudit } from "@/lib/audit";
+import { getClientIp } from "@/lib/rate-limit";
 
 export async function PUT(
   request: Request,
@@ -32,6 +34,20 @@ export async function PUT(
       },
     });
 
+    // Audit trail: record every status change by the host
+    if (body.status && body.status !== prevGuest?.status) {
+      logAudit({
+        action: "GUEST_STATUS_CHANGED",
+        actorId:     user.userId,
+        actorEmail:  user.email,
+        targetId:    guestId,
+        targetType:  "GUEST",
+        targetLabel: guest.name,
+        metadata:    { eventId: id, from: prevGuest?.status, to: body.status },
+        ip:          getClientIp(request),
+      }).catch(() => {});
+    }
+
     // If a confirmed guest was declined/removed, try to promote from waitlist
     const wasConfirmed = prevGuest?.status === "CONFIRMED";
     const nowNotConfirmed = body.status && body.status !== "CONFIRMED";
@@ -60,6 +76,17 @@ export async function DELETE(
 
     const guest = await prisma.guest.findUnique({ where: { id: guestId } });
     await prisma.guest.delete({ where: { id: guestId, eventId: id } });
+
+    logAudit({
+      action:      "GUEST_REMOVED",
+      actorId:     user.userId,
+      actorEmail:  user.email,
+      targetId:    guestId,
+      targetType:  "GUEST",
+      targetLabel: guest?.name ?? guestId,
+      metadata:    { eventId: id, status: guest?.status },
+      ip:          getClientIp(request),
+    }).catch(() => {});
 
     if (guest?.status === "CONFIRMED") {
       promoteFromWaitlist(id).catch(() => {});

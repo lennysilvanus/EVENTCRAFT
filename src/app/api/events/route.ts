@@ -25,7 +25,13 @@ const createEventSchema = z.object({
   dressCode: z.string().optional(),
   notes: z.string().optional(),
   isPublic: z.boolean().default(false),
-  coverImage: z.string().optional(),
+  isTemplate: z.boolean().default(false),
+  recurrenceType: z.enum(["NONE", "WEEKLY", "MONTHLY", "YEARLY"]).default("NONE"),
+  recurrenceEnd: z.string().optional(),
+  // L-3: Validate image URLs so javascript:/data: schemes can't be stored
+  coverImage:  z.string().url().max(2048).optional().or(z.literal("")).or(z.literal(null)).optional(),
+  posterImage: z.string().url().max(2048).optional().or(z.literal("")).or(z.literal(null)).optional(),
+  videoUrl:    z.string().url().max(2048).optional().or(z.literal("")).or(z.literal(null)).optional(),
   ticketPrice: z.number().positive().optional(),
   ticketCurrency: z.string().default("TZS"),
   tiers: z.array(tierSchema).optional(),
@@ -58,15 +64,19 @@ export async function POST(request: Request) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     // Enforce plan event limits
-    const fullUser = await prisma.user.findUnique({ where: { id: user.userId }, select: { plan: true, planExpiresAt: true } });
-    const limits = getPlanLimits(fullUser?.plan ?? "FREE", fullUser?.planExpiresAt);
+    const fullUser = await prisma.user.findUnique({ where: { id: user.userId }, select: { plan: true, planExpiresAt: true, role: true, eventCredits: true } });
+    const limits = getPlanLimits(fullUser?.plan ?? "FREE", fullUser?.planExpiresAt, fullUser?.role);
     if (limits.events !== Infinity) {
       const eventCount = await prisma.event.count({ where: { hostId: user.userId } });
       if (eventCount >= limits.events) {
-        return NextResponse.json({
-          error: `Your plan allows up to ${limits.events} events. Upgrade to create more.`,
-          code: "PLAN_LIMIT_EVENTS",
-        }, { status: 403 });
+        if (!fullUser?.eventCredits || fullUser.eventCredits <= 0) {
+          return NextResponse.json({
+            error: `Your plan allows up to ${limits.events} events. Upgrade or buy an event credit to create more.`,
+            code: "PLAN_LIMIT_EVENTS",
+          }, { status: 403 });
+        }
+        // M-1: Decrement credit atomically inside the same transaction as event creation
+        // so a failed create never silently consumes a credit
       }
     }
 
@@ -77,7 +87,23 @@ export async function POST(request: Request) {
     }
 
     const data = parsed.data;
-    const event = await prisma.event.create({
+    const needsCreditDecrement =
+      limits.events !== Infinity &&
+      (await prisma.event.count({ where: { hostId: user.userId } })) >= limits.events;
+
+    const event = await prisma.$transaction(async (tx) => {
+      // M-1: Decrement credit and create event atomically — one cannot succeed without the other
+      if (needsCreditDecrement) {
+        const updated = await tx.user.update({
+          where: { id: user.userId },
+          data:  { eventCredits: { decrement: 1 } },
+          select: { eventCredits: true },
+        });
+        if (updated.eventCredits < 0) {
+          throw Object.assign(new Error("No event credits available"), { code: "NO_CREDITS" });
+        }
+      }
+      return tx.event.create({
       data: {
         title: data.title,
         description: data.description,
@@ -91,7 +117,12 @@ export async function POST(request: Request) {
         dressCode: data.dressCode || null,
         notes: data.notes || null,
         isPublic: data.isPublic,
+        isTemplate: data.isTemplate,
+        recurrenceType: data.recurrenceType,
+        recurrenceEnd: data.recurrenceEnd ? new Date(data.recurrenceEnd) : null,
         coverImage: data.coverImage || null,
+        posterImage: data.posterImage || null,
+        videoUrl: data.videoUrl || null,
         ticketPrice: data.ticketPrice ?? null,
         ticketCurrency: data.ticketCurrency,
         status: "DRAFT",
@@ -110,9 +141,14 @@ export async function POST(request: Request) {
       },
       include: { tiers: { orderBy: { sortOrder: "asc" } } },
     });
+    });
 
     return NextResponse.json({ data: event }, { status: 201 });
   } catch (error) {
+    const err = error as Error & { code?: string };
+    if (err.code === "NO_CREDITS") {
+      return NextResponse.json({ error: "No event credits available", code: "PLAN_LIMIT_EVENTS" }, { status: 403 });
+    }
     console.error("POST /api/events error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

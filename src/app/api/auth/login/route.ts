@@ -13,8 +13,8 @@ export async function POST(request: Request) {
   const ip = getClientIp(request);
 
   try {
-    // 10 attempts per IP per 15 minutes
-    if (isRateLimited(`login:${ip}`, 10, 15 * 60 * 1000)) {
+    // M-3: Rate-limit both by IP and by email to block distributed per-account attacks
+    if (await isRateLimited(`login:ip:${ip}`, 10, 15 * 60 * 1000)) {
       return NextResponse.json({ error: "Too many login attempts. Please try again later." }, { status: 429 });
     }
 
@@ -26,6 +26,10 @@ export async function POST(request: Request) {
     }
 
     const { email, password } = parsed.data;
+
+    if (await isRateLimited(`login:email:${email.toLowerCase()}`, 15, 15 * 60 * 1000)) {
+      return NextResponse.json({ error: "Too many login attempts. Please try again later." }, { status: 429 });
+    }
 
     const user = await prisma.user.findUnique({ where: { email } });
 

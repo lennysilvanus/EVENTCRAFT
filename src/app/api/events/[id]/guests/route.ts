@@ -26,8 +26,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (!event) return NextResponse.json({ error: "Event not found" }, { status: 404 });
 
     // Enforce plan guest limits
-    const fullUser = await prisma.user.findUnique({ where: { id: user.userId }, select: { plan: true, planExpiresAt: true } });
-    const limits = getPlanLimits(fullUser?.plan ?? "FREE", fullUser?.planExpiresAt);
+    const fullUser = await prisma.user.findUnique({ where: { id: user.userId }, select: { plan: true, planExpiresAt: true, role: true } });
+    const limits = getPlanLimits(fullUser?.plan ?? "FREE", fullUser?.planExpiresAt, fullUser?.role);
     if (limits.guests !== Infinity) {
       const guestCount = await prisma.guest.count({ where: { eventId: id } });
       if (guestCount >= limits.guests) {

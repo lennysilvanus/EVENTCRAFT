@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { hashToken } from "@/lib/auth";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -9,8 +10,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Missing token" }, { status: 400 });
   }
 
+  // H-6: look up by hash — raw token is never stored in the DB
   const user = await prisma.user.findUnique({
-    where: { emailVerificationToken: token },
+    where: { emailVerificationToken: hashToken(token) },
     select: { id: true, emailVerified: true, emailVerificationExpiry: true },
   });
 

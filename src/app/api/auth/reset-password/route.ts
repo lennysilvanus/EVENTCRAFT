@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { hashToken } from "@/lib/auth";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 
@@ -16,9 +17,10 @@ export async function POST(request: Request) {
 
     const { token, password } = parsed.data;
 
+    // H-6: compare against the stored hash, not the raw token
     const user = await prisma.user.findFirst({
       where: {
-        passwordResetToken: token,
+        passwordResetToken: hashToken(token),
         passwordResetExpiry: { gt: new Date() },
       },
     });

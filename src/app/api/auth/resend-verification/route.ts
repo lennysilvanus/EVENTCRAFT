@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuthUserFromCookies } from "@/lib/auth";
+import { getAuthUserFromCookies, generateSecureToken } from "@/lib/auth";
 import { sendEmailVerification } from "@/lib/email";
 import { isRateLimited, getClientIp } from "@/lib/rate-limit";
-import { randomBytes } from "crypto";
 
 export async function POST(request: Request) {
   try {
     // 3 resends per user per hour
-    if (isRateLimited(`resend-verif:${getClientIp(request)}`, 3, 60 * 60 * 1000)) {
+    if (await isRateLimited(`resend-verif:${getClientIp(request)}`, 3, 60 * 60 * 1000)) {
       return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 });
     }
 
@@ -23,12 +22,12 @@ export async function POST(request: Request) {
     if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
     if (dbUser.emailVerified) return NextResponse.json({ message: "Email already verified" });
 
-    const token = randomBytes(32).toString("hex");
+    const { raw: token, hashed } = generateSecureToken();
     const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     await prisma.user.update({
       where: { id: user.userId },
-      data: { emailVerificationToken: token, emailVerificationExpiry: expiry },
+      data: { emailVerificationToken: hashed, emailVerificationExpiry: expiry },
     });
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";

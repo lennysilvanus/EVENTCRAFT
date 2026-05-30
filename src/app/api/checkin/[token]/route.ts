@@ -34,7 +34,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
 
     const guest = await prisma.guest.findFirst({
       where: { qrToken: token },
-      include: { event: true },
+      include: {
+        event: {
+          select: {
+            title: true, date: true, location: true, coverImage: true, coverColor: true,
+            ticketPrice: true,
+          },
+        },
+        tier: { select: { price: true } },
+        payment: { select: { status: true } },
+      },
     });
 
     if (!guest) return NextResponse.json({ error: "Invalid QR code" }, { status: 404 });
@@ -43,6 +52,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     }
     if (guest.status === "DECLINED") {
       return NextResponse.json({ error: "Guest declined this event" }, { status: 403 });
+    }
+
+    // Payment gate: if this is a paid ticket, payment must be COMPLETED before check-in
+    const isPaidTicket =
+      (guest.tier && guest.tier.price > 0) ||
+      (!guest.tier && guest.event.ticketPrice && guest.event.ticketPrice > 0);
+
+    if (isPaidTicket) {
+      if (!guest.payment || guest.payment.status !== "COMPLETED") {
+        return NextResponse.json(
+          { error: "Payment not completed — this ticket has not been paid for" },
+          { status: 402 }
+        );
+      }
     }
 
     const updated = await prisma.guest.update({

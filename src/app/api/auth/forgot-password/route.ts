@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isRateLimited, getClientIp } from "@/lib/rate-limit";
+import { generateSecureToken } from "@/lib/auth";
 import { z } from "zod";
-import crypto from "crypto";
 
 const schema = z.object({ email: z.string().email() });
 
 export async function POST(request: Request) {
   try {
     // 5 requests per IP per hour — prevents email enumeration spam
-    if (isRateLimited(`forgot:${getClientIp(request)}`, 5, 60 * 60 * 1000)) {
+    if (await isRateLimited(`forgot:${getClientIp(request)}`, 5, 60 * 60 * 1000)) {
       return NextResponse.json({ message: "If that email exists, a reset link has been sent." }); // no 429 — avoid enumeration
     }
 
@@ -23,12 +23,13 @@ export async function POST(request: Request) {
     // Always return success to avoid email enumeration
     if (!user) return NextResponse.json({ message: "If that email exists, a reset link has been sent." });
 
-    const token = crypto.randomBytes(32).toString("hex");
+    // H-6: store the hash — never the raw token — so a DB dump is useless
+    const { raw: token, hashed } = generateSecureToken();
     const expiry = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
 
     await prisma.user.update({
       where: { id: user.id },
-      data: { passwordResetToken: token, passwordResetExpiry: expiry },
+      data: { passwordResetToken: hashed, passwordResetExpiry: expiry },
     });
 
     const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";

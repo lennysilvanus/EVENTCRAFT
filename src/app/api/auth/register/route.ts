@@ -1,22 +1,21 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { hashPassword, signToken } from "@/lib/auth";
+import { hashPassword, signToken, generateSecureToken } from "@/lib/auth";
 import { isRateLimited, getClientIp } from "@/lib/rate-limit";
 import { sendEmailVerification } from "@/lib/email";
 import { z } from "zod";
-import { randomBytes } from "crypto";
 
 const schema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
+  name:     z.string().min(2, "Name must be at least 2 characters"),
+  email:    z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  phone: z.string().optional(),
+  phone:    z.string().optional(),
 });
 
 export async function POST(request: Request) {
   try {
     // 5 registrations per IP per hour
-    if (isRateLimited(`register:${getClientIp(request)}`, 5, 60 * 60 * 1000)) {
+    if (await isRateLimited(`register:${getClientIp(request)}`, 5, 60 * 60 * 1000)) {
       return NextResponse.json({ error: "Too many registration attempts. Please try again later." }, { status: 429 });
     }
 
@@ -35,14 +34,26 @@ export async function POST(request: Request) {
     }
 
     const hashedPassword = await hashPassword(password);
-    const verificationToken = randomBytes(32).toString("hex");
+    // H-6: store hash in DB, send raw token in the verification URL
+    const { raw: verificationToken, hashed: hashedVerificationToken } = generateSecureToken();
     const verificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    const ip                  = getClientIp(request);
+    const userAgent           = request.headers.get("user-agent") ?? undefined;
 
     const user = await prisma.user.create({
       data: {
         name, email, password: hashedPassword, phone: phone || null,
-        emailVerificationToken: verificationToken,
+        emailVerificationToken:  hashedVerificationToken,
         emailVerificationExpiry: verificationExpiry,
+        // PDPA / Tanzania Personal Data Protection Act — capture consent at
+        // the moment of registration so it is timestamped, IP-attributed,
+        // and stored against the user record for audit purposes.
+        consentRecords: {
+          create: [
+            { type: "PRIVACY_POLICY", version: "1.0", ip, userAgent },
+            { type: "TERMS",          version: "1.0", ip, userAgent },
+          ],
+        },
       },
     });
 
@@ -62,10 +73,10 @@ export async function POST(request: Request) {
 
     response.cookies.set("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure:   process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 30 * 24 * 60 * 60,
-      path: "/",
+      maxAge:   30 * 24 * 60 * 60,
+      path:     "/",
     });
 
     return response;
