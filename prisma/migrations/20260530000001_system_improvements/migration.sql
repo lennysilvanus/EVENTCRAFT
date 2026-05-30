@@ -8,8 +8,8 @@ CREATE TABLE "RateLimit" (
 CREATE INDEX "RateLimit_resetAt_idx" ON "RateLimit"("resetAt");
 
 -- AI generation quota tracking
-ALTER TABLE "User" ADD COLUMN "aiGenerationsUsed"  INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE "User" ADD COLUMN "aiGenerationsMonth" TEXT    NOT NULL DEFAULT '';
+ALTER TABLE "User" ADD COLUMN "aiGenerationsUsed" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "User" ADD COLUMN "aiGenerationsResetAt" TIMESTAMP(3);
 
 -- Performance indexes
 CREATE INDEX IF NOT EXISTS "Guest_eventId_idx"          ON "Guest"("eventId");
